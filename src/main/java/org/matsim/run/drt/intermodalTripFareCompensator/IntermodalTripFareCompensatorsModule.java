@@ -37,6 +37,10 @@ public class IntermodalTripFareCompensatorsModule extends AbstractModule {
 				addEventHandlerBinding().toInstance(compensatorPerDay);
 				addControlerListenerBinding().toInstance(compensatorPerDay);
 				break;
+			case PtModeUsedInSameTripASCpt:
+				IntermodalTripFareCompensatorPerTripASCpt compensatorPerTripASCpt = new IntermodalTripFareCompensatorPerTripASCpt(intermodalFareConfigGroup);
+				addEventHandlerBinding().toInstance(compensatorPerTripASCpt);
+				break;
 			default:
 				throw new RuntimeException(
 						"unknown CompensationCondition: " + intermodalFareConfigGroup.getCompensationCondition());

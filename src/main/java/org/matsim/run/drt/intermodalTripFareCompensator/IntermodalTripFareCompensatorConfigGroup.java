@@ -50,7 +50,7 @@ public class IntermodalTripFareCompensatorConfigGroup extends ReflectiveConfigGr
 	    private ImmutableSet<String> ptModes = ImmutableSet.of(TransportMode.pt); // same
 
 	    public enum CompensationCondition {
-	    	PtModeUsedInSameTrip, PtModeUsedAnywhereInTheDay
+	    	PtModeUsedInSameTrip, PtModeUsedAnywhereInTheDay, PtModeUsedInSameTripASCpt
 	    }
 	    
 	    public IntermodalTripFareCompensatorConfigGroup() {
