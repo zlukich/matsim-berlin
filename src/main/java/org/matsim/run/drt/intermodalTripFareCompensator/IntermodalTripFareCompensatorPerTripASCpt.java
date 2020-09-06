@@ -22,6 +22,7 @@ package org.matsim.run.drt.intermodalTripFareCompensator;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -45,6 +46,9 @@ import com.google.inject.Inject;
  *
  */
 public class IntermodalTripFareCompensatorPerTripASCpt implements PersonDepartureEventHandler, ActivityStartEventHandler {
+	private static final Logger log = Logger.getLogger(IntermodalTripFareCompensatorPerTripASCpt.class);
+	private int logCnt = 0;
+	
 	@Inject private EventsManager events;
 	@Inject private Scenario scenario;
 	private Set<Id<Person>> personsOnPtTrip = new HashSet<>();
@@ -60,28 +64,44 @@ public class IntermodalTripFareCompensatorPerTripASCpt implements PersonDepartur
 	@Override
 	public void handleEvent(PersonDepartureEvent event) {
 		
-		// compute the compenstation for each agent depending on subpopulation-specific parameters
-		String subpopulation = (String) scenario.getPopulation().getPersons().get(event.getPersonId()).getAttributes().getAttribute("subpopulation");
-		double utilityConstant = scenario.getConfig().planCalcScore().getScoringParameters(subpopulation).getModes().get(TransportMode.pt).getConstant();
-		double marginalUtilityOfMoney = scenario.getConfig().planCalcScore().getScoringParameters(subpopulation).getMarginalUtilityOfMoney();
-		double compensation = -1. * utilityConstant / marginalUtilityOfMoney;
+		Person person = scenario.getPopulation().getPersons().get(event.getPersonId());
 		
-		if (ptModes.contains(event.getLegMode())) {
-			personsOnPtTrip.add(event.getPersonId());
+		if (person == null) {
+			// person not in population, probably a transit driver
+		} else {
+			// compute the compensation for each agent depending on subpopulation-specific parameters
 			
- 			if (personsOnDrtTrip.contains(event.getPersonId())) {
-				// drt before pt case: compensate here when pt leg follows
-				compensate(event.getTime(), event.getPersonId(), compensation);
-				personsOnDrtTrip.remove(event.getPersonId());
-			}
-		}
-		if (drtModes.contains(event.getLegMode())) {
-			if (personsOnPtTrip.contains(event.getPersonId())) {
-				// drt after pt case: compensate immediately
-				compensate(event.getTime(), event.getPersonId(), compensation);
+			if (person.getAttributes().getAttribute("subpopulation") == null) {
+				if (logCnt <= 5) {
+					log.warn("Person doesn't have the subpopulation attribute. Can't compensate the intermodal trip for this agent: " + person.toString());
+					logCnt++;
+					if (logCnt == 5) log.warn("Further warnings of this type will not be printed.");
+				}
+				
 			} else {
-				// drt before pt case: compensate later _if_ pt leg follows
-				personsOnDrtTrip.add(event.getPersonId());
+				String subpopulation = (String) person.getAttributes().getAttribute("subpopulation");
+				double utilityConstant = scenario.getConfig().planCalcScore().getScoringParameters(subpopulation).getModes().get(TransportMode.pt).getConstant();
+				double marginalUtilityOfMoney = scenario.getConfig().planCalcScore().getScoringParameters(subpopulation).getMarginalUtilityOfMoney();
+				double compensation = -1. * utilityConstant / marginalUtilityOfMoney;
+				
+				if (ptModes.contains(event.getLegMode())) {
+					personsOnPtTrip.add(event.getPersonId());
+					
+		 			if (personsOnDrtTrip.contains(event.getPersonId())) {
+						// drt before pt case: compensate here when pt leg follows
+						compensate(event.getTime(), event.getPersonId(), compensation);
+						personsOnDrtTrip.remove(event.getPersonId());
+					}
+				}
+				if (drtModes.contains(event.getLegMode())) {
+					if (personsOnPtTrip.contains(event.getPersonId())) {
+						// drt after pt case: compensate immediately
+						compensate(event.getTime(), event.getPersonId(), compensation);
+					} else {
+						// drt before pt case: compensate later _if_ pt leg follows
+						personsOnDrtTrip.add(event.getPersonId());
+					}
+				}
 			}
 		}
 	}
