@@ -60,6 +60,13 @@ public class IntermodalTripFareCompensatorPerTripASCpt implements PersonDepartur
 		this.drtModes = intermodalFareConfigGroup.getDrtModes();
 		this.ptModes = intermodalFareConfigGroup.getPtModes();
 	}
+	
+	// for tests
+	IntermodalTripFareCompensatorPerTripASCpt(IntermodalTripFareCompensatorConfigGroup intermodalFareConfigGroup, EventsManager events, Scenario scenario) {
+		this(intermodalFareConfigGroup);
+		this.events = events;
+		this.scenario = scenario;
+	}
 
 	@Override
 	public void handleEvent(PersonDepartureEvent event) {
