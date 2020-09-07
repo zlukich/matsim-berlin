@@ -101,9 +101,17 @@ public class BerlinRaptorIntermodalAccessEgress implements RaptorIntermodalAcces
                 
                 // account for intermodal trip fare compensations
                 for (IntermodalTripFareCompensatorConfigGroup compensatorCfg : interModalTripFareCompensatorsCfg.getIntermodalTripFareCompensatorConfigGroups()) {
-                	if (compensatorCfg.getDrtModes().contains(mode) && compensatorCfg.getPtModes().contains(TransportMode.pt)) {
-                		// the following is a compensation, thus positive!
-                		utility += compensatorCfg.getCompensationPerTrip() * scoringParams.getMarginalUtilityOfMoney();
+                	if (compensatorCfg.getCompensationCondition().equals(IntermodalTripFareCompensatorConfigGroup.CompensationCondition.PtModeUsedInSameTripASCpt)) {
+                		if (compensatorCfg.getDrtModes().contains(mode) && compensatorCfg.getPtModes().contains(TransportMode.pt)) {
+							// the following is a compensation, thus positive!
+                			double compensationUtils = -1 * scoringParams.getModes().get(mode).getConstant();
+                    		utility += compensationUtils;
+                    	}
+                	} else {
+                		if (compensatorCfg.getDrtModes().contains(mode) && compensatorCfg.getPtModes().contains(TransportMode.pt)) {
+                    		// the following is a compensation, thus positive!
+                    		utility += compensatorCfg.getCompensationPerTrip() * scoringParams.getMarginalUtilityOfMoney();
+                    	}
                 	}
                 }
                 
