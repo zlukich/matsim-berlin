@@ -21,13 +21,23 @@ package org.matsim.run;
 
 import static org.matsim.core.config.groups.ControlerConfigGroup.RoutingAlgorithmType.FastAStarLandmarks;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Random;
 
 import org.apache.log4j.Logger;
+import org.matsim.analysis.RunPersonTripAnalysis;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.contrib.drt.routing.DrtRoute;
+import org.matsim.contrib.drt.routing.DrtRouteFactory;
 import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
 import org.matsim.core.config.groups.QSimConfigGroup.TrafficDynamics;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
@@ -35,9 +45,17 @@ import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.gbl.Gbl;
-import org.matsim.core.router.MainModeIdentifier;
+import org.matsim.core.gbl.MatsimRandom;
+import org.matsim.core.population.routes.RouteFactories;
+import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
+import org.matsim.run.drt.RunDrtOpenBerlinScenario;
+import org.matsim.run.singleTripStrategies.ChangeSingleTripModeAndRoute;
+import org.matsim.run.singleTripStrategies.RandomSingleTripReRoute;
 
+import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 
 /**
@@ -55,7 +73,7 @@ public final class RunBerlinScenario {
 		}
 		
 		if ( args.length==0 ) {
-			args = new String[] {"scenarios/berlin-v5.4-10pct/input/berlin-v5.4-10pct.config.xml"}  ;
+			args = new String[] {"scenarios/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"}  ;
 		}
 
 		Config config = prepareConfig( args ) ;
@@ -72,7 +90,7 @@ public final class RunBerlinScenario {
 		
 		final Controler controler = new Controler( scenario );
 		
-		if (controler.getConfig().transit().isUsingTransitInMobsim()) {
+		if (controler.getConfig().transit().isUseTransit()) {
 			// use the sbb pt raptor router
 			controler.addOverridingModule( new AbstractModule() {
 				@Override
@@ -86,12 +104,20 @@ public final class RunBerlinScenario {
 					+ "Should only be used for testing or car-focused studies with a fixed modal split.  ");
 		}
 		
+		
+		
 		// use the (congested) car travel time for the teleported ride mode
 		controler.addOverridingModule( new AbstractModule() {
 			@Override
 			public void install() {
 				addTravelTimeBinding( TransportMode.ride ).to( networkTravelTime() );
 				addTravelDisutilityFactoryBinding( TransportMode.ride ).to( carTravelDisutilityFactoryKey() );
+				bind(AnalysisMainModeIdentifier.class).to(OpenBerlinIntermodalPtDrtRouterModeIdentifier.class);
+				
+				addPlanStrategyBinding("RandomSingleTripReRoute").toProvider(RandomSingleTripReRoute.class);
+				addPlanStrategyBinding("ChangeSingleTripModeAndRoute").toProvider(ChangeSingleTripModeAndRoute.class);
+
+				bind(RaptorIntermodalAccessEgress.class).to(BerlinRaptorIntermodalAccessEgress.class);
 			}
 		} );
 
@@ -105,17 +131,55 @@ public final class RunBerlinScenario {
 		// when run from command line/IDE (java root).  :-(    See comment in method.  kai, jul'18
 		// yy Does this comment still apply?  kai, jul'19
 
-		final Scenario scenario = ScenarioUtils.loadScenario( config );
+		/*
+		 * We need to set the DrtRouteFactory before loading the scenario. Otherwise DrtRoutes in input plans are loaded
+		 * as GenericRouteImpls and will later cause exceptions in DrtRequestCreator. So we do this here, although this
+		 * class is also used for runs without drt.
+		 */
+		final Scenario scenario = ScenarioUtils.createScenario( config );
 
+		RouteFactories routeFactories = scenario.getPopulation().getFactory().getRouteFactories();
+		routeFactories.setRouteFactory(DrtRoute.class, new DrtRouteFactory());
+		
+		ScenarioUtils.loadScenario(scenario);
+
+		BerlinExperimentalConfigGroup berlinCfg = ConfigUtils.addOrGetModule(config, BerlinExperimentalConfigGroup.class);
+		if (berlinCfg.getPopulationDownsampleFactor() != 1.0) {
+			downsample(scenario.getPopulation().getPersons(), berlinCfg.getPopulationDownsampleFactor());
+		}
+		
 		return scenario;
 	}
-	
-	public static Config prepareConfig( String [] args ) {
+
+	public static Config prepareConfig( String [] args, ConfigGroup... customModules ){
+		return prepareConfig( RunDrtOpenBerlinScenario.AdditionalInformation.none, args, customModules ) ;
+	}
+	public static Config prepareConfig( RunDrtOpenBerlinScenario.AdditionalInformation additionalInformation, String [] args,
+					    ConfigGroup... customModules ) {
 		OutputDirectoryLogging.catchLogEntries();
 		
 		String[] typedArgs = Arrays.copyOfRange( args, 1, args.length );
-
-		final Config config = ConfigUtils.loadConfig( args[ 0 ] ); // I need this to set the context
+		
+		ConfigGroup[] customModulesToAdd = null ;
+		if ( additionalInformation== RunDrtOpenBerlinScenario.AdditionalInformation.acceptUnknownParamsBerlinConfig ) {
+			customModulesToAdd = new ConfigGroup[]{ new BerlinExperimentalConfigGroup(true) };
+		} else {
+			customModulesToAdd = new ConfigGroup[]{ new BerlinExperimentalConfigGroup(false) };
+		}
+		ConfigGroup[] customModulesAll = new ConfigGroup[customModules.length + customModulesToAdd.length];
+		
+		int counter = 0;
+		for (ConfigGroup customModule : customModules) {
+			customModulesAll[counter] = customModule;
+			counter++;
+		}
+		
+		for (ConfigGroup customModule : customModulesToAdd) {
+			customModulesAll[counter] = customModule;
+			counter++;
+		}
+		
+		final Config config = ConfigUtils.loadConfig( args[ 0 ], customModulesAll );
 		
 		config.controler().setRoutingAlgorithmType( FastAStarLandmarks );
 		
@@ -126,12 +190,12 @@ public final class RunBerlinScenario {
 		config.plansCalcRoute().removeModeRoutingParams(TransportMode.pt);
 		config.plansCalcRoute().removeModeRoutingParams(TransportMode.bike);
 		config.plansCalcRoute().removeModeRoutingParams("undefined");
-	
+		
 		config.qsim().setInsertingWaitingVehiclesBeforeDrivingVehicles( true );
 				
 		// vsp defaults
 		config.vspExperimental().setVspDefaultsCheckingLevel( VspExperimentalConfigGroup.VspDefaultsCheckingLevel.info );
-		config.plansCalcRoute().setInsertingAccessEgressWalk( true );
+		config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
 		config.qsim().setUsingTravelTimeCheckInTeleportation( true );
 		config.qsim().setTrafficDynamics( TrafficDynamics.kinematicWaves );
 				
@@ -148,6 +212,51 @@ public final class RunBerlinScenario {
 		ConfigUtils.applyCommandline( config, typedArgs ) ;
 
 		return config ;
+	}
+	
+	public static void runAnalysis(Controler controler) {
+		Config config = controler.getConfig();
+		
+		String modesString = "";
+		for (String mode: config.planCalcScore().getAllModes()) {
+			modesString = modesString + mode + ",";
+		}
+		// remove last ","
+		if (modesString.length() < 2) {
+			log.error("no valid mode found");
+			modesString = null;
+		} else {
+			modesString = modesString.substring(0, modesString.length() - 1);
+		}
+		
+		String[] args = new String[] {
+				config.controler().getOutputDirectory(),
+				config.controler().getRunId(),
+				"null", // TODO: reference run, hard to automate
+				"null", // TODO: reference run, hard to automate
+				config.global().getCoordinateSystem(),
+				"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/projects/avoev/shp-files/shp-bezirke/bezirke_berlin.shp",
+				TransformationFactory.DHDN_GK4,
+				"SCHLUESSEL",
+				"home",
+				"10", // TODO: scaling factor, should be 10 for 10pct scenario and 100 for 1pct scenario
+				"null", // visualizationScriptInputDirectory
+				modesString
+		};
+		
+		try {
+			RunPersonTripAnalysis.main(args);
+		} catch (IOException e) {
+			log.error(e.getStackTrace());
+			throw new RuntimeException(e.getMessage());
+		}
+	}
+	
+	private static void downsample( final Map<Id<Person>, ? extends Person> map, final double sample ) {
+		final Random rnd = MatsimRandom.getLocalInstance();
+		log.warn( "Population downsampled from " + map.size() + " agents." ) ;
+		map.values().removeIf( person -> rnd.nextDouble() > sample ) ;
+		log.warn( "Population downsampled to " + map.size() + " agents." ) ;
 	}
 
 }

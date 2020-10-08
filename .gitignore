@@ -15,6 +15,8 @@ hs_err_pid*
 /.classpath
 /target/
 output*
+/output/
+/test/output/
 /bin/
 
 /.idea/
@@ -22,3 +24,5 @@ output*
 
 *.DS_STORE
 /.DS_Store
+
+/RunGTFS2MATSimOpenBerlin/

@@ -107,7 +107,10 @@ public final class RunDrtOpenBerlinScenario {
 		});
 
 		// Add drt-specific fare module
+		// yyyy there is fareSModule (with S) in config. ?!?!  kai, jul'19
+		
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
+		
 		controler.addOverridingModule(new PtIntermodalRoutingModesModule());
 		
 		return controler;
