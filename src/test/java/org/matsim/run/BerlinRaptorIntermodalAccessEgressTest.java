@@ -37,6 +37,8 @@ import org.matsim.api.core.v01.population.PopulationFactory;
 import org.matsim.api.core.v01.population.Route;
 import org.matsim.contrib.drt.fare.DrtFareParams;
 import org.matsim.contrib.drt.routing.DrtRoute;
+import org.matsim.contrib.drt.run.DrtConfigGroup;
+import org.matsim.contrib.drt.run.MultiModeDrtConfigGroup;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup;
@@ -89,19 +91,25 @@ public class BerlinRaptorIntermodalAccessEgressTest {
 		drtParams.setMarginalUtilityOfDistance(-0.00024);
 		drtParams.setMarginalUtilityOfTraveling(-0.00025 * 3600.0);
 		drtParams.setMonetaryDistanceRate(-0.00026);
-		
+
+		DrtConfigGroup drtConfigGroup = new DrtConfigGroup();
+		drtConfigGroup.setMode(TransportMode.drt);
 		DrtFareParams drtFareParams = new DrtFareParams();
 		drtFareParams.setBasefare(1.0);
 		drtFareParams.setDailySubscriptionFee(10.0);
 		drtFareParams.setMinFarePerTrip(2.0);
 		drtFareParams.setDistanceFare_m(0.0002);
 		drtFareParams.setTimeFare_h(0.0003 * 3600);
-		drtParams.addParameterSet(drtFareParams);
-		
-		BerlinRaptorIntermodalAccessEgress raptorIntermodalAccessEgress = new BerlinRaptorIntermodalAccessEgress(config);
-		
+		drtConfigGroup.addParameterSet(drtFareParams);
+		MultiModeDrtConfigGroup multiModeDrtConfigGroup = ConfigUtils.addOrGetModule(config,
+				MultiModeDrtConfigGroup.class);
+		multiModeDrtConfigGroup.addParameterSet(drtConfigGroup);
+
+		BerlinRaptorIntermodalAccessEgress raptorIntermodalAccessEgress = new BerlinRaptorIntermodalAccessEgress(
+				config);
+
 		Leg walkLeg1 = PopulationUtils.createLeg(TransportMode.walk);
-		walkLeg1.setDepartureTime(7*3600.0);
+		walkLeg1.setDepartureTime(7 * 3600.0);
 		walkLeg1.setTravelTime(100);
 		Route walkRoute1 = new GenericRouteImpl(Id.createLinkId("dummy1"), Id.createLinkId("dummy2"));
 		walkRoute1.setDistance(200.0);

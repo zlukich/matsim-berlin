@@ -36,34 +36,29 @@ import ch.sbb.matsim.routing.pt.raptor.RaptorStopFinder;
  * A default implementation of {@link RaptorIntermodalAccessEgress} returning a
  * new RIntermodalAccessEgress, which contains a list of legs (same as in the
  * input), the associated travel time as well as the disutility.
-=======
 
-/**
- * A default implementation of {@link RaptorIntermodalAccessEgress} returning a new RIntermodalAccessEgress,
- * which contains a list of legs (same as in the input), the associated travel time as well as the disutility.
->>>>>>> 5.5.x
- *
- * @author vsp-gleich / ikaddoura
  */
 public class BerlinRaptorIntermodalAccessEgress implements RaptorIntermodalAccessEgress {
-	Config config;	
+
+	Config config;
 	BerlinExperimentalConfigGroup berlinCfg;
 	MultiModeDrtConfigGroup multiModeDrtConfigGroup;
 	IntermodalTripFareCompensatorsConfigGroup interModalTripFareCompensatorsCfg;
 
 	// for randomization per person, per mode, per direction (but same random value for one combination of this per routing request)
-    Id<Person> lastPersonId = Id.createPersonId("");
-    RaptorStopFinder.Direction lastDirection = RaptorStopFinder.Direction.EGRESS;
-    Map<String, Double> lastModes2Randomization = new HashMap<>();
-	
+	Id<Person> lastPersonId = Id.createPersonId("");
+	RaptorStopFinder.Direction lastDirection = RaptorStopFinder.Direction.EGRESS;
+	Map<String, Double> lastModes2Randomization = new HashMap<>();
+
 	Random random = MatsimRandom.getLocalInstance();
-	
+
 	@Inject
     BerlinRaptorIntermodalAccessEgress(Config config) {
 		this.config = config;
 		this.berlinCfg = ConfigUtils.addOrGetModule(config, BerlinExperimentalConfigGroup.class);
 		this.multiModeDrtConfigGroup = ConfigUtils.addOrGetModule(config, MultiModeDrtConfigGroup.class);
-		this.interModalTripFareCompensatorsCfg = ConfigUtils.addOrGetModule(config, IntermodalTripFareCompensatorsConfigGroup.class);
+		this.interModalTripFareCompensatorsCfg = ConfigUtils.addOrGetModule(config,
+				IntermodalTripFareCompensatorsConfigGroup.class);
 	}
 
 	@Override
@@ -88,36 +83,37 @@ public class BerlinRaptorIntermodalAccessEgress implements RaptorIntermodalAcces
                 // overrides individual parameters per person; use default scoring parameters
                 if (travelTime.isDefined()) {
                     tTime += travelTime.seconds();
-                    utility += travelTime.seconds() * (scoringParams.getModes().get(mode).getMarginalUtilityOfTraveling() + (-1) * scoringParams.getPerforming_utils_hr()) / 3600;
-                }
-                Double distance = ((Leg) pe).getRoute().getDistance();
-                if (distance != null && distance != 0.) {
-                	utility += distance * scoringParams.getModes().get(mode).getMarginalUtilityOfDistance();
-                	utility += distance * scoringParams.getModes().get(mode).getMonetaryDistanceRate() * scoringParams.getMarginalUtilityOfMoney();
-                }
-                utility += scoringParams.getModes().get(mode).getConstant();
-                
-                // account for drt fares
-                for (DrtConfigGroup drtConfigGroup : multiModeDrtConfigGroup.getModalElements()) {
-                	if (drtConfigGroup.getMode().equals(mode)) {
-                        double fare = 0.;
-                        DrtFareParams drtFareParams = drtConfigGroup.getDrtFareParams().orElseGet(null);
-                        if (drtFareParams == null) {
-                        	continue;
-                        }
-                		if (distance != null && distance != 0.) {
-                        	fare += drtFareParams.getDistanceFare_m() * distance;
-                        }
-                                                
-                        if (travelTime.isDefined()) {
-                            fare += drtFareParams.getTimeFare_h() * travelTime.seconds() / 3600.;
+					utility += travelTime.seconds() * (scoringParams.getModes()
+							.get(mode)
+							.getMarginalUtilityOfTraveling() + (-1) * scoringParams.getPerforming_utils_hr()) / 3600;
+				}
+				Double distance = ((Leg)pe).getRoute().getDistance();
+				if (distance != null && distance != 0.) {
+					utility += distance * scoringParams.getModes().get(mode).getMarginalUtilityOfDistance();
+					utility += distance
+							* scoringParams.getModes().get(mode).getMonetaryDistanceRate()
+							* scoringParams.getMarginalUtilityOfMoney();
+				}
+				utility += scoringParams.getModes().get(mode).getConstant();
 
-                        }
-                        
-                        fare += drtFareParams.getBasefare(); 
-                        fare = Math.max(fare, drtFareParams.getMinFarePerTrip());
-                        utility += -1. * fare * scoringParams.getMarginalUtilityOfMoney();
-                	}
+				// account for drt fares
+				for (DrtConfigGroup drtConfig : multiModeDrtConfigGroup.getModalElements()) {
+					if (drtConfig.getMode().equals(mode)) {
+						DrtFareParams drtFareParams = drtConfig.getDrtFareParams().get();
+						double fare = 0.;
+						if (distance != null && distance != 0.) {
+							fare += drtFareParams.getDistanceFare_m() * distance;
+						}
+
+						if (travelTime.isDefined()) {
+							fare += drtFareParams.getTimeFare_h() * travelTime.seconds() / 3600.;
+
+						}
+
+						fare += drtFareParams.getBasefare();
+						fare = Math.max(fare, drtFareParams.getMinFarePerTrip());
+						utility += -1. * fare * scoringParams.getMarginalUtilityOfMoney();
+					}
                 }
                 
                 // account for intermodal trip fare compensations

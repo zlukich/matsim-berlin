@@ -106,7 +106,6 @@ public final class RunDrtOpenBerlinScenario {
 			}
 		});
 
-		// Add drt-specific fare module
 		// yyyy there is fareSModule (with S) in config. ?!?!  kai, jul'19
 		
 		controler.addOverridingModule(new IntermodalTripFareCompensatorsModule());
@@ -146,7 +145,9 @@ public final class RunDrtOpenBerlinScenario {
 	public enum AdditionalInformation { none, acceptUnknownParamsBerlinConfig }
 
 	public static Config prepareConfig( AdditionalInformation additionalInformation, String [] args, ConfigGroup... customModules) {
-		ConfigGroup[] customModulesToAdd = new ConfigGroup[]{new DvrpConfigGroup(), new MultiModeDrtConfigGroup(), new SwissRailRaptorConfigGroup(), new IntermodalTripFareCompensatorsConfigGroup(), new PtIntermodalRoutingModesConfigGroup() };
+		ConfigGroup[] customModulesToAdd = new ConfigGroup[] { new DvrpConfigGroup(), new MultiModeDrtConfigGroup(),
+				new SwissRailRaptorConfigGroup(), new IntermodalTripFareCompensatorsConfigGroup(),
+				new PtIntermodalRoutingModesConfigGroup() };
 		ConfigGroup[] customModulesAll = new ConfigGroup[customModules.length + customModulesToAdd.length];
 
 		int counter = 0;
