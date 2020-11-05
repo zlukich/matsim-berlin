@@ -104,7 +104,7 @@ public class BerlinRaptorIntermodalAccessEgress implements RaptorIntermodalAcces
                 	if (compensatorCfg.getCompensationCondition().equals(IntermodalTripFareCompensatorConfigGroup.CompensationCondition.PtModeUsedInSameTripASCpt)) {
                 		if (compensatorCfg.getDrtModes().contains(mode) && compensatorCfg.getPtModes().contains(TransportMode.pt)) {
 							// the following is a compensation, thus positive!
-                			double compensationUtils = -1 * scoringParams.getModes().get(mode).getConstant();
+                			double compensationUtils = -1 * scoringParams.getModes().get(TransportMode.pt).getConstant();
                     		utility += compensationUtils;
                     	}
                 	} else {
