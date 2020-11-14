@@ -89,14 +89,14 @@ public class RunGTFS2MATSimMiB {
 		// http://www.vbb.de/de/article/fahrplan/webservices/datensaetze/1186967.html
 		
 		//input data, https paths don't work probably due to old GTFS library :(
-		String gtfsZipFile = "../public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/original-data/GTFS-VBB-20181214/GTFS-VBB-20181214.zip"; 
+		String gtfsZipFile = "G:\\Meine Ablage\\Master Tu berlin\\Masterarbeit\\Files MIB\\gtfs_20200730_bbx_lineG_Hugo.zip"; 
 		CoordinateTransformation ct = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, TransformationFactory.DHDN_GK4);
 		// choose date not too far away (e.g. on 2019-12-12 S2 is almost completey missing for 2019-08-20 gtfs data set!), 
 		// but not too close either (diversions and interruptions due to short term construction work included in GTFS)
 		// -> hopefully no construction sites in GTFS for that date
 		// -> Thursday is more "typical" than Friday
 		// check date for construction work in BVG Navi booklet: 18-20 Dec'2018 seemed best over the period from Dec'2018 to Sep'2019
-		LocalDate date = LocalDate.parse("2018-12-20"); 
+		LocalDate date = LocalDate.parse("2020-10-27"); 
 
 		//output files
 		String outputDirectory = "RunGTFS2MATSimMiB";
@@ -326,6 +326,9 @@ public class RunGTFS2MATSimMiB {
 				break;
 			case 1000: 
 				lineVehicleType = ferryVehicleType;
+				break;
+			case 2:
+				lineVehicleType = reRbVehicleType;
 				break;
 			default:
 				log.error("unknown transit mode! Line id was " + line.getId().toString() + 
