@@ -25,14 +25,13 @@ public class RunBerlinScenarioDebugExperimentsIT{
 
 	@Rule public MatsimTestUtils utils = new MatsimTestUtils() ;
 
-	// 10pct, testing the scores in iteration 0 and 1
 	@Test
-	public final void test10pctUntilIteration1() {
+	public final void test10pct() {
 		try {
 			final String[] args = {"scenarios/berlin-v5.4-10pct/input/berlin-v5.4-10pct.config.xml"};
 
 			Config config =  RunBerlinScenario.prepareConfig( args ) ;
-			config.controler().setLastIteration(1);
+			config.controler().setLastIteration(0);
 			config.strategy().setFractionOfIterationsToDisableInnovation(1);
 			config.controler().setOverwriteFileSetting( OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists );
 			config.controler().setOutputDirectory( utils.getOutputDirectory() );
@@ -48,14 +47,13 @@ public class RunBerlinScenarioDebugExperimentsIT{
 		}
 	}
 	
-	// 10pct, testing the scores in iteration 0 and 1
 	@Test
-	public final void test10pctUntilIteration1RemoveRideModeOnSomeLinks() {
+	public final void test10pctRemoveRideModeOnSomeLinks() {
 		try {
 			final String[] args = {"scenarios/berlin-v5.4-10pct/input/berlin-v5.4-10pct.config.xml"};
 
 			Config config =  RunBerlinScenario.prepareConfig( args ) ;
-			config.controler().setLastIteration(1);
+			config.controler().setLastIteration(0);
 			config.strategy().setFractionOfIterationsToDisableInnovation(1);
 			config.controler().setOverwriteFileSetting( OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists );
 			config.controler().setOutputDirectory( utils.getOutputDirectory() );
@@ -95,9 +93,9 @@ public class RunBerlinScenarioDebugExperimentsIT{
 	}
 
 	@Test
-	public final void test1pctManyIterationsRemoveRideModeOnSomeLinks() {
+	public final void test1pctRemoveRideModeOnSomeLinks() {
 	
-		final int iteration = 1;
+		final int iteration = 0;
 		try {
 			final String[] args = {"scenarios/berlin-v5.4-1pct/input/berlin-v5.4-1pct.config.xml"};
 
@@ -164,9 +162,9 @@ public class RunBerlinScenarioDebugExperimentsIT{
 	}
 	
 	@Test
-	public final void test1pctManyIterations() {
+	public final void test1pct() {
 
-		final int iteration = 1;
+		final int iteration = 0;
 		try {
 			final String[] args = {"scenarios/berlin-v5.4-1pct/input/berlin-v5.4-1pct.config.xml"};
 
