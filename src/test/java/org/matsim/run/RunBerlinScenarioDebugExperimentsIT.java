@@ -97,7 +97,7 @@ public class RunBerlinScenarioDebugExperimentsIT{
 	@Test
 	public final void test1pctManyIterationsRemoveRideModeOnSomeLinks() {
 	
-		final int iteration = 0;
+		final int iteration = 1;
 		try {
 			final String[] args = {"scenarios/berlin-v5.4-1pct/input/berlin-v5.4-1pct.config.xml"};
 
