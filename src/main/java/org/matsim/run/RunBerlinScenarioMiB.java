@@ -102,20 +102,20 @@ public final class RunBerlinScenarioMiB {
 		Controler controler = prepareControler( scenario ) ;
 		
 			
-//		controler.addOverridingModule(new AbstractModule() {
-//			@Override
-//			public void install() {
-//				addEventHandlerBinding().toInstance(occtracker(scenario));				
-//			}
-//		});;
-		
-		controler.addOverridingModule( new AbstractModule(){
-			@Override public void install() {
-				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
-				
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				addEventHandlerBinding().toInstance(occtracker(scenario));
 			}
-
-		});
+		});;
+		
+//		controler.addOverridingModule( new AbstractModule(){
+//			@Override public void install() {
+//				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
+//
+//			}
+//
+//		});
 		
 		
 		controler.run() ;
