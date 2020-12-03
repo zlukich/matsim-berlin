@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.core.config.Config;
+import org.matsim.core.config.groups.StrategyConfigGroup;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy.OverwriteFileSetting;
 import org.matsim.testcases.MatsimTestUtils;
@@ -47,10 +48,29 @@ public class RunBerlinScenarioMIBTest {
 	public final void testCapacityDependentPtScoringAndRouting() {
 		try {
 			final String[] args = {"scenarios/berlin-v5.5-1pct/input/berlin-v5.5-1pct.config.xml"};
-			
+
+			/*
+			 * Idea: Find two parallel bus lines. Create agents taking taht bus from stop a to stop b which all depart
+			 * at time 10:00, so the next bus would be line 1. Create so many agents that the bus is congested (not
+			 * overfull, there should be no denied boarding) and check the score in iteration 0. In the second
+			 * iteration (iteration 1), have strategy weight 100% on ReRoute (can also be set over all iterations).
+			 * Some agents should now switch to the less congested bus of line 2 following the line 1 bus. Then ensure
+			 * the scores are better at the end of iteration 1 than at the end of iteration 0, because agents switched
+			 * to the less congested bus. This should ensure that a) occupancy dependent scoring is working and b)
+			 * the router takes the occupancy into account.
+			 */
+
 			Config config =  RunBerlinScenarioMiB.prepareConfig( args );
 			config.controler().setLastIteration(1);
+
 			config.strategy().setFractionOfIterationsToDisableInnovation(1);
+			config.strategy().clearStrategySettings();
+			StrategyConfigGroup.StrategySettings stratSets = new StrategyConfigGroup.StrategySettings();
+			stratSets.setStrategyName("ReRoute");
+			stratSets.setWeight(1.0);
+			stratSets.setSubpopulation("person");
+			config.strategy().addStrategySettings(stratSets);
+
 			config.controler().setOverwriteFileSetting(OverwriteFileSetting.deleteDirectoryIfExists);
 			config.controler().setOutputDirectory( utils.getOutputDirectory() );
 			config.plans().setInputFile("../../../test/input/test-agents.xml");
