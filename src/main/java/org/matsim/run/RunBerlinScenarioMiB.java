@@ -101,30 +101,17 @@ public final class RunBerlinScenarioMiB {
 		PopulationUtils.sampleDown(scenario.getPopulation(), 0.001);
 		Controler controler = prepareControler( scenario ) ;
 		
-		ScoringParametersForPerson parameters = new SubpopulationScoringParameters(scenario);
-
-		EventsManager events = EventsUtils.createEventsManager();
-		RaptorInVehicleCostCalculator inVehicleCostCalculator = new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 1.8);
-		OccupancyData occData = new OccupancyData();
-		OccupancyTracker occTracker = new OccupancyTracker(occData, scenario, inVehicleCostCalculator, events, parameters);
-
-		
-		ScoringFunctionFactory testSFF = new ScoringFunctionFactory() {
-			@Override
-			public ScoringFunction createNewScoringFunction(Person person) {
-				final ScoringParameters params = parameters.getScoringParameters(person);
-
-				SumScoringFunction scoringFunctionAccumulator = new SumScoringFunction();
-				scoringFunctionAccumulator.addScoringFunction(new CharyparNagelLegScoring(params, scenario.getNetwork(), config.transit().getTransitModes()));
-				scoringFunctionAccumulator.addScoringFunction(new ScoreEventScoring());
-
-				return scoringFunctionAccumulator;
-			}
-		};
+			
+//		controler.addOverridingModule(new AbstractModule() {
+//			@Override
+//			public void install() {
+//				addEventHandlerBinding().toInstance(occtracker(scenario));				
+//			}
+//		});;
 		
 		controler.addOverridingModule( new AbstractModule(){
 			@Override public void install() {
-				this.bindScoringFunctionFactory().toInstance(testSFF) ;
+				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
 				
 			}
 
@@ -311,6 +298,35 @@ public final class RunBerlinScenarioMiB {
 		log.warn( "Population downsampled from " + map.size() + " agents." ) ;
 		map.values().removeIf( person -> rnd.nextDouble() > sample ) ;
 		log.warn( "Population downsampled to " + map.size() + " agents." ) ;
+	}
+	
+	public static OccupancyTracker occtracker (Scenario scenario){
+		ScoringParametersForPerson parameters = new SubpopulationScoringParameters(scenario);
+
+		EventsManager events = EventsUtils.createEventsManager();
+		RaptorInVehicleCostCalculator inVehicleCostCalculator = new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 1.8);
+		OccupancyData occData = new OccupancyData();
+		return new OccupancyTracker(occData, scenario, inVehicleCostCalculator, events, parameters);
+		
+	}
+	
+	public static ScoringFunctionFactory testSFF(Scenario scenario, Config config) {
+		ScoringFunctionFactory testSFF = new ScoringFunctionFactory() {
+			ScoringParametersForPerson parameters = new SubpopulationScoringParameters(scenario);
+
+			@Override
+			public ScoringFunction createNewScoringFunction(Person person) {
+				final ScoringParameters params = parameters.getScoringParameters(person);
+
+				SumScoringFunction scoringFunctionAccumulator = new SumScoringFunction();
+				scoringFunctionAccumulator.addScoringFunction(new CharyparNagelLegScoring(params, scenario.getNetwork(), config.transit().getTransitModes()));
+				scoringFunctionAccumulator.addScoringFunction(new ScoreEventScoring());
+
+				return scoringFunctionAccumulator;
+			}
+		};
+		return testSFF;
+		
 	}
 
 }
