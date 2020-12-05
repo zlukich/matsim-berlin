@@ -105,6 +105,7 @@ public final class RunBerlinScenarioMiB {
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
 			public void install() {
+<<<<<<< HEAD
 				addEventHandlerBinding().toInstance(occtracker(scenario));				
 			}
 		});;
@@ -113,9 +114,19 @@ public final class RunBerlinScenarioMiB {
 			@Override public void install() {
 				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
 				
+=======
+				addEventHandlerBinding().toInstance(occtracker(scenario));
+>>>>>>> branch 'MIB5.5' of https://github.com/matsim-scenarios/matsim-berlin.git
 			}
-
-		});
+		});;
+		
+//		controler.addOverridingModule( new AbstractModule(){
+//			@Override public void install() {
+//				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
+//
+//			}
+//
+//		});
 		
 		
 		controler.run() ;
