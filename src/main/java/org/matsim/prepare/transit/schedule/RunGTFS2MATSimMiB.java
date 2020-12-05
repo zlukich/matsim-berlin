@@ -116,11 +116,7 @@ public class RunGTFS2MATSimMiB {
 		//Parse the schedule again
 		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
 		new TransitScheduleReader(scenario).readFile(scheduleFile);
-		
-		// copy late/early departures to have at complete schedule from ca. 0:00 to ca. 30:00 
-//		TransitSchedulePostProcessTools.copyLateDeparturesToStartOfDay(scenario.getTransitSchedule(), 24 * 3600, "copied", false);
-		TransitSchedulePostProcessTools.copyEarlyDeparturesToFollowingNight(scenario.getTransitSchedule(), 6 * 3600, "copied");
-		
+			
 		//if necessary, parse in an existing network file here:
 		new MatsimNetworkReader(scenario.getNetwork()).readFile("../public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/input/berlin-v5-network.xml.gz");
 		
