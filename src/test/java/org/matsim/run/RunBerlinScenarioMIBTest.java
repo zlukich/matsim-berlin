@@ -23,12 +23,23 @@ import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.groups.StrategyConfigGroup;
+import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy.OverwriteFileSetting;
+import org.matsim.core.events.EventsUtils;
+import org.matsim.core.scoring.functions.ScoringParametersForPerson;
+import org.matsim.core.scoring.functions.SubpopulationScoringParameters;
 import org.matsim.testcases.MatsimTestUtils;
+
+import ch.sbb.matsim.routing.pt.raptor.CapacityDependentInVehicleCostCalculator;
+import ch.sbb.matsim.routing.pt.raptor.OccupancyData;
+import ch.sbb.matsim.routing.pt.raptor.OccupancyTracker;
+import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 
 
 
@@ -61,23 +72,35 @@ public class RunBerlinScenarioMIBTest {
 			 */
 
 			Config config =  RunBerlinScenarioMiB.prepareConfig( args );
-			config.controler().setLastIteration(1);
+			config.controler().setLastIteration(5);
 
-			config.strategy().setFractionOfIterationsToDisableInnovation(1);
+			config.strategy().setFractionOfIterationsToDisableInnovation(5);
 			config.strategy().clearStrategySettings();
+			
 			StrategyConfigGroup.StrategySettings stratSets = new StrategyConfigGroup.StrategySettings();
 			stratSets.setStrategyName("ReRoute");
 			stratSets.setWeight(1.0);
 			stratSets.setSubpopulation("person");
 			config.strategy().addStrategySettings(stratSets);
-
+			
 			config.controler().setOverwriteFileSetting(OverwriteFileSetting.deleteDirectoryIfExists);
 			config.controler().setOutputDirectory( utils.getOutputDirectory() );
-			config.plans().setInputFile("../../../test/input/test-agents.xml");
+			config.plans().setInputFile("../../../test/input/PopulationforMiBTest.xml");
+			
 			
 			Scenario scenario = RunBerlinScenarioMiB.prepareScenario( config );
 			
+			RunBerlinScenarioMiB.increaseVehicleTypePassengerCarEquivalents(scenario, 10.0);
+			RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
+			
 			Controler controler = RunBerlinScenarioMiB.prepareControler( scenario ) ;
+			
+			controler.addOverridingModule(new AbstractModule() {
+				@Override
+				public void install() {
+					addEventHandlerBinding().toInstance(RunBerlinScenarioMiB.occtracker(scenario));				
+				}
+			});;
 			
 			controler.run() ;
 			
@@ -91,4 +114,6 @@ public class RunBerlinScenarioMIBTest {
 			throw new RuntimeException(ee) ;
 		}
 	}
+	
+
 }

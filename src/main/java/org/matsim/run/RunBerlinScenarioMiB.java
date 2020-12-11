@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.matsim.analysis.RunPersonTripAnalysis;
@@ -40,6 +41,7 @@ import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ModeParams;
 import org.matsim.core.config.groups.QSimConfigGroup.TrafficDynamics;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.AbstractModule;
@@ -66,6 +68,7 @@ import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
 import org.matsim.run.singleTripStrategies.ChangeSingleTripModeAndRoute;
 import org.matsim.run.singleTripStrategies.RandomSingleTripReRoute;
+import org.matsim.vehicles.VehicleType;
 
 import ch.sbb.matsim.routing.pt.raptor.CapacityDependentInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
@@ -127,8 +130,8 @@ public final class RunBerlinScenarioMiB {
 //			}
 //
 //		});
-		
-		
+		increaseVehicleTypePassengerCarEquivalents(scenario, 10.0);
+
 		controler.run() ;
 
 	}
@@ -259,7 +262,7 @@ public final class RunBerlinScenarioMiB {
 		}
 		config.planCalcScore().addActivityParams( new ActivityParams( "freight" ).setTypicalDuration( 12.*3600. ) );
 		
-		config.planCalcScore().getModes();
+		
 
 		ConfigUtils.applyCommandline( config, typedArgs ) ;
 
@@ -338,6 +341,23 @@ public final class RunBerlinScenarioMiB {
 		};
 		return testSFF;
 		
+	}
+	
+	public static void increaseVehicleTypePassengerCarEquivalents (Scenario scenario, Double equivalency ){
+		Set<Id<VehicleType>> vehicleTypeIds = scenario.getTransitVehicles().getVehicleTypes().keySet();
+		for (Id<VehicleType> id: vehicleTypeIds) 
+		scenario.getTransitVehicles().getVehicleTypes().get(id).setPcuEquivalents(equivalency);
+		
+	}
+	
+	public static void reduceVehicleCapacityPt(Scenario scenario, Double equivalency){
+		Set<Id<VehicleType>> vehicleTypeIds = scenario.getTransitVehicles().getVehicleTypes().keySet();
+		for (Id<VehicleType> id: vehicleTypeIds) { 
+		Double seats = scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().getSeats() / equivalency;	
+		Double  standingRoom = scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().getStandingRoom() / equivalency;
+		scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().setSeats(seats.intValue()+1);
+		scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().setStandingRoom(standingRoom.intValue());
+		}
 	}
 
 }
