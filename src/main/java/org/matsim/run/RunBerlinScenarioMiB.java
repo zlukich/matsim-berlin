@@ -70,6 +70,7 @@ import org.matsim.run.singleTripStrategies.ChangeSingleTripModeAndRoute;
 import org.matsim.run.singleTripStrategies.RandomSingleTripReRoute;
 import org.matsim.vehicles.VehicleType;
 
+import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.CapacityDependentInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.OccupancyData;
@@ -145,6 +146,9 @@ public final class RunBerlinScenarioMiB {
 		
 		if (controler.getConfig().transit().isUseTransit()) {
 			// use the sbb pt raptor router
+			
+//			ConfigUtils.addOrGetModule(scenario.getConfig(), SwissRailRaptorConfigGroup.class).setUseCapacityConstraints(true);
+			
 			controler.addOverridingModule( new AbstractModule() {
 				@Override
 				public void install() {
@@ -358,6 +362,10 @@ public final class RunBerlinScenarioMiB {
 		scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().setSeats(seats.intValue()+1);
 		scenario.getTransitVehicles().getVehicleTypes().get(id).getCapacity().setStandingRoom(standingRoom.intValue());
 		}
+	}
+	
+	public static void setPTScoringParameter (Config config){
+		config.planCalcScore().getModes().get("pt").setMarginalUtilityOfTraveling(-0.18);
 	}
 
 }
