@@ -102,35 +102,18 @@ public final class RunBerlinScenarioMiB {
 		config.controler().setOverwriteFileSetting(OverwriteFileSetting.deleteDirectoryIfExists);
 		config.controler().setLastIteration(0);
 		Scenario scenario = prepareScenario( config ) ;
-		PopulationUtils.sampleDown(scenario.getPopulation(), 0.001);
+		RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
 		Controler controler = prepareControler( scenario ) ;
 		
 			
 		controler.addOverridingModule(new AbstractModule() {
 			@Override
 			public void install() {
-<<<<<<< HEAD
-				addEventHandlerBinding().toInstance(occtracker(scenario));				
+				addEventHandlerBinding().toInstance(occtracker(scenario));	
+				bind(RaptorInVehicleCostCalculator.class).to(CapacityDependentInVehicleCostCalculator.class);
 			}
 		});;
 		
-		controler.addOverridingModule( new AbstractModule(){
-			@Override public void install() {
-				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
-				
-=======
-				addEventHandlerBinding().toInstance(occtracker(scenario));
->>>>>>> branch 'MIB5.5' of https://github.com/matsim-scenarios/matsim-berlin.git
-			}
-		});;
-		
-//		controler.addOverridingModule( new AbstractModule(){
-//			@Override public void install() {
-//				this.bindScoringFunctionFactory().toInstance(testSFF(scenario, config)) ;
-//
-//			}
-//
-//		});
 		increaseVehicleTypePassengerCarEquivalents(scenario, 10.0);
 
 		controler.run() ;
@@ -147,7 +130,7 @@ public final class RunBerlinScenarioMiB {
 		if (controler.getConfig().transit().isUseTransit()) {
 			// use the sbb pt raptor router
 			
-//			ConfigUtils.addOrGetModule(scenario.getConfig(), SwissRailRaptorConfigGroup.class).setUseCapacityConstraints(true);
+			ConfigUtils.addOrGetModule(scenario.getConfig(), SwissRailRaptorConfigGroup.class).setUseCapacityConstraints(true);
 			
 			controler.addOverridingModule( new AbstractModule() {
 				@Override
@@ -322,7 +305,7 @@ public final class RunBerlinScenarioMiB {
 		ScoringParametersForPerson parameters = new SubpopulationScoringParameters(scenario);
 
 		EventsManager events = EventsUtils.createEventsManager();
-		RaptorInVehicleCostCalculator inVehicleCostCalculator = new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 1.8);
+		RaptorInVehicleCostCalculator inVehicleCostCalculator = new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 5.0);
 		OccupancyData occData = new OccupancyData();
 		return new OccupancyTracker(occData, scenario, inVehicleCostCalculator, events, parameters);
 		

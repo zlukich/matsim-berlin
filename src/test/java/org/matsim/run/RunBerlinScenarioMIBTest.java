@@ -93,10 +93,9 @@ public class RunBerlinScenarioMIBTest {
 			
 			Scenario scenario = RunBerlinScenarioMiB.prepareScenario( config );
 			
-//			RunBerlinScenarioMiB.increaseVehicleTypePassengerCarEquivalents(scenario, 10.0);
 			RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
 			
-D			Controler controler = RunBerlinScenarioMiB.prepareControler( scenario ) ;
+			Controler controler = RunBerlinScenarioMiB.prepareControler( scenario ) ;
 			
 			controler.addOverridingModule(new AbstractModule() {
 				@Override
