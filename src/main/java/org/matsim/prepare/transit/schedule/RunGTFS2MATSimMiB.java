@@ -89,17 +89,17 @@ public class RunGTFS2MATSimMiB {
 		// http://www.vbb.de/de/article/fahrplan/webservices/datensaetze/1186967.html
 		
 		//input data, https paths don't work probably due to old GTFS library :(
-		String gtfsZipFile = "G:\\Meine Ablage\\Master Tu berlin\\Masterarbeit\\Files MIB\\gtfs_20200730_bbx_lineG_Hugo.zip"; 
+		String gtfsZipFile = "D:\\TuBCloud\\Shared\\Masterarbeit Hugo Castro MIB\\BBX_December\\gtfs_nullfall_var1_202012_abc.zip"; 
 		CoordinateTransformation ct = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, TransformationFactory.DHDN_GK4);
 		// choose date not too far away (e.g. on 2019-12-12 S2 is almost completey missing for 2019-08-20 gtfs data set!), 
 		// but not too close either (diversions and interruptions due to short term construction work included in GTFS)
 		// -> hopefully no construction sites in GTFS for that date
 		// -> Thursday is more "typical" than Friday
 		// check date for construction work in BVG Navi booklet: 18-20 Dec'2018 seemed best over the period from Dec'2018 to Sep'2019
-		LocalDate date = LocalDate.parse("2020-10-27"); 
+		LocalDate date = LocalDate.parse("2020-12-15"); 
 
 		//output files
-		String outputDirectory = "RunGTFS2MATSimMiB";
+		String outputDirectory = "RunGTFS2MATSimMiB_base_var1";
 		String networkFile = outputDirectory + "/berlin-v5.5-network.xml.gz";
 		String scheduleFile = outputDirectory + "/berlin-v5.5-transit-schedule.xml.gz";
 		String transitVehiclesFile = outputDirectory + "/berlin-v5.5-transit-vehicles.xml.gz";
@@ -267,6 +267,16 @@ public class RunGTFS2MATSimMiB {
 			VehicleUtils.setEgressTime(ferryVehicleType, 1.0 / 1.0); // 1s per alighting agent, distributed on 1 door
 			scenario.getTransitVehicles().addVehicleType( ferryVehicleType );
 		}
+		VehicleType BBXVehicleType = vehicleFactory.createVehicleType( Id.create( "BBX_veh_type", VehicleType.class ) );
+		{
+			VehicleCapacity capacity = BBXVehicleType.getCapacity() ;
+			capacity.setSeats( 300 );
+			capacity.setStandingRoom( 600 );
+			VehicleUtils.setDoorOperationMode(BBXVehicleType, DoorOperationMode.serial); // first finish boarding, then start alighting
+			VehicleUtils.setAccessTime(BBXVehicleType, 1.0 / 10.0); // 1s per boarding agent, distributed on 10 doors
+			VehicleUtils.setEgressTime(BBXVehicleType, 1.0 / 10.0); // 1s per alighting agent, distributed on 10 doors
+			scenario.getTransitVehicles().addVehicleType( BBXVehicleType );
+		}
 		// set link speeds and create vehicles according to pt mode
 		for (TransitLine line: scenario.getTransitSchedule().getTransitLines().values()) {
 			VehicleType lineVehicleType;
@@ -325,6 +335,9 @@ public class RunGTFS2MATSimMiB {
 				break;
 			case 2:
 				lineVehicleType = reRbVehicleType;
+				break;
+			case 117:
+				lineVehicleType = BBXVehicleType;
 				break;
 			default:
 				log.error("unknown transit mode! Line id was " + line.getId().toString() + 

@@ -70,6 +70,9 @@ import org.matsim.run.singleTripStrategies.ChangeSingleTripModeAndRoute;
 import org.matsim.run.singleTripStrategies.RandomSingleTripReRoute;
 import org.matsim.vehicles.VehicleType;
 
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.CapacityDependentInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.DefaultRaptorInVehicleCostCalculator;
@@ -97,10 +100,20 @@ public final class RunBerlinScenarioMiB {
 		if ( args.length==0 ) {
 			args = new String[] {"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"}  ;
 		}
+		
+		var arguments = new InputArgs();
+		JCommander.newBuilder().addObject(arguments).build().parse(args);
 
-		Config config = prepareConfig( args ) ;
+		Config config = prepareConfig( new String[] {"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"} ) ;
+		
+		config.controler().setOutputDirectory(arguments.outputFile);
 		config.controler().setOverwriteFileSetting(OverwriteFileSetting.deleteDirectoryIfExists);
 		config.controler().setLastIteration(0);
+		
+		config.network().setInputFile(arguments.inputFile + "berlin-v5.5-network.xml.gz");
+		config.getModules().get("transit").getParams().put("transitScheduleFile", arguments.inputFile + "/berlin-v5.5-transit-schedule.xml.gz");
+		config.getModules().get("transit").getParams().put("vehiclesFile", arguments.inputFile + "/berlin-v5.5-transit-vehicles.xml.gz");
+		
 		Scenario scenario = prepareScenario( config ) ;
 		RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
 		Controler controler = prepareControler( scenario ) ;
@@ -110,11 +123,11 @@ public final class RunBerlinScenarioMiB {
 			@Override
 			public void install() {
 				addEventHandlerBinding().toInstance(occtracker(scenario));	
+				bind(OccupancyTracker.class).toInstance(occtracker(scenario));
+				bind(CapacityDependentInVehicleCostCalculator.class).toInstance(new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 1.8));
 				bind(RaptorInVehicleCostCalculator.class).to(CapacityDependentInVehicleCostCalculator.class);
 			}
 		});;
-		
-		increaseVehicleTypePassengerCarEquivalents(scenario, 10.0);
 
 		controler.run() ;
 
@@ -349,6 +362,15 @@ public final class RunBerlinScenarioMiB {
 	
 	public static void setPTScoringParameter (Config config){
 		config.planCalcScore().getModes().get("pt").setMarginalUtilityOfTraveling(-0.18);
+	}
+	
+	private static class InputArgs {
+
+		@Parameter(names = {"-input"}, required = true)
+		String inputFile = "Input/europe-latest.osm.pbf";
+
+		@Parameter(names = {"-output"}, required = true)
+		String outputFile = "Output/Network.xml.gz";
 	}
 
 }
