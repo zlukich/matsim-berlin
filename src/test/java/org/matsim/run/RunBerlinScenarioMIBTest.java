@@ -73,7 +73,7 @@ public class RunBerlinScenarioMIBTest {
 			 * the router takes the occupancy into account.
 			 */
 
-			Config config =  RunBerlinScenarioMiB.prepareConfig( args );
+			Config config =  RunBerlinScenarioM.prepareConfig( args );
 			config.controler().setLastIteration(5);
 
 			config.strategy().setFractionOfIterationsToDisableInnovation(5);
@@ -89,18 +89,20 @@ public class RunBerlinScenarioMIBTest {
 			config.controler().setOutputDirectory( utils.getOutputDirectory() );
 			config.plans().setInputFile("../../../test/input/PopulationforMiBTest.xml");
 			
-			RunBerlinScenarioMiB.setPTScoringParameter(config);
+			RunBerlinScenarioM.setPTScoringParameter(config);
 			
-			Scenario scenario = RunBerlinScenarioMiB.prepareScenario( config );
+			Scenario scenario = RunBerlinScenarioM.prepareScenario( config );
 			
-			RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
+			RunBerlinScenarioM.reduceVehicleCapacityPt(scenario, 10.0);
 			
-			Controler controler = RunBerlinScenarioMiB.prepareControler( scenario ) ;
+			Controler controler = RunBerlinScenarioM.prepareControler( scenario ) ;
 			
 			controler.addOverridingModule(new AbstractModule() {
 				@Override
 				public void install() {
-					addEventHandlerBinding().toInstance(RunBerlinScenarioMiB.occtracker(scenario));	
+					addEventHandlerBinding().toInstance(RunBerlinScenarioM.occtracker(scenario));	
+					bind(OccupancyTracker.class).toInstance(RunBerlinScenarioM.occtracker(scenario));
+					bind(CapacityDependentInVehicleCostCalculator.class).toInstance(new CapacityDependentInVehicleCostCalculator(0.4, 0.3, 0.6, 1.8));
 					bind(RaptorInVehicleCostCalculator.class).to(CapacityDependentInVehicleCostCalculator.class);
 				}
 			});;
