@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE config SYSTEM "http://www.matsim.org/files/dtd/config_v2.dtd">
+<config>
+	<module name="controler" >
+		<param name="outputDirectory" value="../output/emissions-berlin-v5.4-1pct/" />
+	</module>	
+	<module name="emissionsAnalysis">
+		<param name="runDirectory" value="https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-1pct/output-berlin-v5.4-1pct/" />
+		<param name="runId" value="berlin-v5.4-1pct" />
+	</module>
+	<module name="emissions">
+		<param name="averageFleetColdEmissionFactorsFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/lehre/hbefa/EFA_ColdStart_vehcat_2005average_forTeaching.txt" />
+		<param name="averageFleetWarmEmissionFactorsFile" value="https://svn.vsp.tu-berlin.de/repos/public-svn/lehre/hbefa/EFA_HOT_vehcat_2005average_forTeaching.txt" />
+	</module>
+</config>

@@ -1,9 +1,9 @@
 /* *********************************************************************** *
- * project: org.matsim.*												   *
+ * project: org.matsim.*
  *                                                                         *
  * *********************************************************************** *
  *                                                                         *
- * copyright       : (C) 2008 by the members listed in the COPYING,        *
+ * copyright       : (C) 2019 by the members listed in the COPYING,        *
  *                   LICENSE and WARRANTY file.                            *
  * email           : info at matsim dot org                                *
  *                                                                         *
@@ -16,8 +16,46 @@
  *   See also COPYING, LICENSE and WARRANTY file                           *
  *                                                                         *
  * *********************************************************************** */
+
+package org.matsim.analysis;
+
+import org.matsim.core.config.ReflectiveConfigGroup;
+import org.matsim.core.config.ReflectiveConfigGroup.StringGetter;
+import org.matsim.core.config.ReflectiveConfigGroup.StringSetter;
+
 /**
- * @author nagel
- *
+ * 
+ * @author ikaddoura
  */
-package org.matsim.gui;
+
+public class AnalysisConfigGroup extends ReflectiveConfigGroup {
+	public static final String GROUP_NAME = "emissionsAnalysis" ;
+
+	public AnalysisConfigGroup() {
+		super(GROUP_NAME);
+	}
+	
+	private String runDirectory = "public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-1pct/output-berlin-v5.4-1pct/";
+	private String runId = "berlin-v5.4-1pct";
+	
+	@StringGetter( "runDirectory" )
+	public String getRunDirectory() {
+		return runDirectory;
+	}
+	@StringSetter( "runDirectory" )
+	public void setRunDirectory(String runDirectory) {
+		this.runDirectory = runDirectory;
+	}
+	
+	@StringGetter( "runId" )
+	public String getRunId() {
+		return runId;
+	}
+	
+	@StringSetter( "runId" )
+	public void setRunId(String runId) {
+		this.runId = runId;
+	}
+	
+}
+

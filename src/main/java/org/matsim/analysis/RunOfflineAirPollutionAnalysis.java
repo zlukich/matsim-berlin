@@ -19,15 +19,26 @@
 
 package org.matsim.analysis;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.emissions.EmissionModule;
 import org.matsim.contrib.emissions.HbefaVehicleCategory;
+import org.matsim.contrib.emissions.Pollutant;
 import org.matsim.contrib.emissions.utils.EmissionsConfigGroup;
 import org.matsim.contrib.emissions.utils.EmissionsConfigGroup.DetailedVsAverageLookupBehavior;
 import org.matsim.contrib.emissions.utils.EmissionsConfigGroup.HbefaRoadTypeSource;
-import org.matsim.contrib.emissions.utils.EmissionsConfigGroup.HbefaVehicleDescriptionSource;
 import org.matsim.contrib.emissions.utils.EmissionsConfigGroup.NonScenarioVehicles;
 import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
@@ -37,8 +48,10 @@ import org.matsim.core.controler.Injector;
 import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
 import org.matsim.core.events.algorithms.EventWriterXML;
+import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.vehicles.EngineInformation;
+import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 
@@ -47,30 +60,24 @@ import org.matsim.vehicles.VehicleUtils;
 */
 
 public class RunOfflineAirPollutionAnalysis {
-	
-	final static String runDirectory = "public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/output-berlin-v5.4-10pct/";	
-	final static String runId = "berlin-v5.4-10pct";
-
-	final static String hbefaFileCold = "shared-svn/projects/matsim-germany/hbefa/hbefa-files/v3.2/EFA_ColdStart_vehcat_2005average.txt";
-	final static String hbefaFileWarm = "shared-svn/projects/matsim-germany/hbefa/hbefa-files/v3.2/EFA_HOT_vehcat_2005average.txt";
+	private static final Logger log = Logger.getLogger(RunOfflineAirPollutionAnalysis.class);
 	
 	public static void main(String[] args) {
 		
-		String rootDirectory = null;
-		
-		if (args.length == 1) {
-			rootDirectory = args[0];
-		} else {
-			throw new RuntimeException("Please set the root directory. Aborting...");
+		if ( args.length==0 ) {
+			args = new String[] {"input/berlin-v5.5-1pct.config_2.xml"};
 		}
 		
-		if (!rootDirectory.endsWith("/")) rootDirectory = rootDirectory + "/";
+		double electricVehicleShare = 0.01;
 		
-		Config config = ConfigUtils.createConfig();
-		config.vehicles().setVehiclesFile(rootDirectory + runDirectory + runId + ".output_vehicles.xml.gz");
-		config.network().setInputFile(rootDirectory + runDirectory + runId + ".output_network.xml.gz");
-		config.transit().setTransitScheduleFile(rootDirectory + runDirectory + runId + ".output_transitSchedule.xml.gz");
-		config.transit().setVehiclesFile(rootDirectory + runDirectory + runId + ".output_transitVehicles.xml.gz");
+		Config config = ConfigUtils.loadConfig(args, new AnalysisConfigGroup(), new EmissionsConfigGroup());
+		
+		AnalysisConfigGroup aConfigGroup = (AnalysisConfigGroup) config.getModules().get(AnalysisConfigGroup.GROUP_NAME);
+		
+		config.vehicles().setVehiclesFile(aConfigGroup.getRunDirectory() + aConfigGroup.getRunId() + ".output_vehicles.xml.gz");
+		config.network().setInputFile(aConfigGroup.getRunDirectory() + aConfigGroup.getRunId() + ".output_network.xml.gz");
+		config.transit().setTransitScheduleFile(aConfigGroup.getRunDirectory() + aConfigGroup.getRunId() + ".output_transitSchedule.xml.gz");
+		config.transit().setVehiclesFile(aConfigGroup.getRunDirectory() + aConfigGroup.getRunId() + ".output_transitVehicles.xml.gz");
 		config.global().setCoordinateSystem("GK4");
 		config.plans().setInputFile(null);
 		config.parallelEventHandling().setNumberOfThreads(null);
@@ -79,13 +86,17 @@ public class RunOfflineAirPollutionAnalysis {
 		
 		EmissionsConfigGroup eConfig = ConfigUtils.addOrGetModule(config, EmissionsConfigGroup.class);
 		eConfig.setDetailedVsAverageLookupBehavior(DetailedVsAverageLookupBehavior.directlyTryAverageTable);
-		eConfig.setAverageColdEmissionFactorsFile(rootDirectory + hbefaFileCold);
-		eConfig.setAverageWarmEmissionFactorsFile(rootDirectory + hbefaFileWarm);
 		eConfig.setHbefaRoadTypeSource(HbefaRoadTypeSource.fromLinkAttributes);
 		eConfig.setNonScenarioVehicles(NonScenarioVehicles.ignore);
 		
-		final String emissionEventOutputFile = rootDirectory + runDirectory + runId + ".emission.events.offline.xml.gz";
-		final String eventsFile = rootDirectory + runDirectory + runId + ".output_events.xml.gz";
+		String analysisOutputDirectory = config.controler().getOutputDirectory();
+		if (!analysisOutputDirectory.endsWith("/")) analysisOutputDirectory = analysisOutputDirectory + "/";
+		
+		File folder = new File(analysisOutputDirectory);			
+		folder.mkdirs();
+		
+		final String emissionEventOutputFile = analysisOutputDirectory + aConfigGroup.getRunId() + ".emission.events.offline.xml.gz";
+		final String eventsFile = aConfigGroup.getRunDirectory() + aConfigGroup.getRunId() + ".output_events.xml.gz";
 		
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		
@@ -139,13 +150,12 @@ public class RunOfflineAirPollutionAnalysis {
 			}			
 		}
 		
-		// vehicles
-
-		Id<VehicleType> carVehicleTypeId = Id.create("car", VehicleType.class);
-		Id<VehicleType> freightVehicleTypeId = Id.create("freight", VehicleType.class);
+		// vehicle types
 		
+		// car vehicles
+		
+		Id<VehicleType> carVehicleTypeId = Id.create("car", VehicleType.class);
 		VehicleType carVehicleType = scenario.getVehicles().getVehicleTypes().get(carVehicleTypeId);
-		VehicleType freightVehicleType = scenario.getVehicles().getVehicleTypes().get(freightVehicleTypeId);
 		
 		EngineInformation carEngineInformation = carVehicleType.getEngineInformation();
 		VehicleUtils.setHbefaVehicleCategory( carEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
@@ -153,11 +163,28 @@ public class RunOfflineAirPollutionAnalysis {
 		VehicleUtils.setHbefaSizeClass( carEngineInformation, "average" );
 		VehicleUtils.setHbefaEmissionsConcept( carEngineInformation, "average" );
 		
+		// freight vehicles
+
+		Id<VehicleType> freightVehicleTypeId = Id.create("freight", VehicleType.class);
+		VehicleType freightVehicleType = scenario.getVehicles().getVehicleTypes().get(freightVehicleTypeId);
+		
 		EngineInformation freightEngineInformation = freightVehicleType.getEngineInformation();
-		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.HEAVY_GOODS_VEHICLE.toString());
+		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
+//		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.HEAVY_GOODS_VEHICLE.toString());
 		VehicleUtils.setHbefaTechnology( freightEngineInformation, "average" );
 		VehicleUtils.setHbefaSizeClass( freightEngineInformation, "average" );
 		VehicleUtils.setHbefaEmissionsConcept( freightEngineInformation, "average" );
+
+		// electric vehicles
+		Id<VehicleType> electricVehicleTypeId = Id.create("ev", VehicleType.class);
+		VehicleType electricVehicleType = scenario.getVehicles().getFactory().createVehicleType(electricVehicleTypeId);
+		scenario.getVehicles().addVehicleType(electricVehicleType);
+		
+		EngineInformation electricEngineInformation = electricVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( electricEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
+		VehicleUtils.setHbefaTechnology( electricEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( electricEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( electricEngineInformation, "average" );
 		
 		// public transit vehicles should be considered as non-hbefa vehicles
 		for (VehicleType type : scenario.getTransitVehicles().getVehicleTypes().values()) {
@@ -167,6 +194,36 @@ public class RunOfflineAirPollutionAnalysis {
 			VehicleUtils.setHbefaTechnology( engineInformation, "average" );
 			VehicleUtils.setHbefaSizeClass( engineInformation, "average" );
 			VehicleUtils.setHbefaEmissionsConcept( engineInformation, "average" );			
+		}
+		
+		List<Id<Vehicle>> vehiclesToChangeToElectric = new ArrayList<>();
+
+		final Random rnd = MatsimRandom.getLocalInstance();
+
+		int totalVehiclesCounter = 0;
+		int carCounter = 0;
+		int evCounter = 0;
+		// randomly change some vehicle types
+		for (Vehicle vehicle : scenario.getVehicles().getVehicles().values()) {
+			totalVehiclesCounter++;
+			if (vehicle.getId().toString().contains("freight")) {
+				// some freight vehicles have the type "car"
+			} else if (vehicle.getType().getId().toString().equals(carVehicleTypeId.toString())) {
+				carCounter++;
+				if (rnd.nextDouble() < electricVehicleShare) {
+					evCounter++;
+					vehiclesToChangeToElectric.add(vehicle.getId());
+				}
+			} else {
+				// ignore all other vehicles
+			}
+		}
+				
+		for (Id<Vehicle> id : vehiclesToChangeToElectric) {
+			scenario.getVehicles().removeVehicle(id);
+			Vehicle vehicleNew = scenario.getVehicles().getFactory().createVehicle(id, electricVehicleType);
+			scenario.getVehicles().addVehicle(vehicleNew);
+			log.info("Type for vehicle " + id + " changed to electric.");
 		}
 		
 		// the following is copy paste from the example...
@@ -189,12 +246,39 @@ public class RunOfflineAirPollutionAnalysis {
         EventWriterXML emissionEventWriter = new EventWriterXML(emissionEventOutputFile);
         emissionModule.getEmissionEventsManager().addHandler(emissionEventWriter);
 
+        EmissionsOnLinkHandler emissionsEventHandler = new EmissionsOnLinkHandler();
+		eventsManager.addHandler(emissionsEventHandler);
+        
         eventsManager.initProcessing();
         MatsimEventsReader matsimEventsReader = new MatsimEventsReader(eventsManager);
         matsimEventsReader.readFile(eventsFile);
         eventsManager.finishProcessing();
 
         emissionEventWriter.closeFile();
+        
+        log.info("Total number of vehicles: " + totalVehiclesCounter);
+		log.info("Number of car vehicles: " + carCounter);
+		log.info("Number of electric vehicles: " + evCounter);
+
+        log.info("Emission analysis completed.");
+        
+        log.info("Writing output...");   
+        
+        try (CSVPrinter printer = new CSVPrinter(new FileWriter(analysisOutputDirectory + aConfigGroup.getRunId() + ".emissionsPerLink"), CSVFormat.DEFAULT)) {
+
+            // write header
+            printer.printRecord("LinkID", Pollutant.CO2_TOTAL, Pollutant.NOx, Pollutant.PM, Pollutant.SO2);
+
+            // write values
+            for (Id<Link> linkId : emissionsEventHandler.getLink2pollutants().keySet()) {
+            	Map<Pollutant, Double> pollutants = emissionsEventHandler.getLink2pollutants().get(linkId);
+                printer.printRecord(linkId, pollutants.get(Pollutant.CO2_TOTAL), pollutants.get(Pollutant.NOx), pollutants.get(Pollutant.PM), pollutants.get(Pollutant.SO2));
+            }
+            
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        
 	}
 
 }
