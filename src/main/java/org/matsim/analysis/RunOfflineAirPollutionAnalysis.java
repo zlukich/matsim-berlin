@@ -19,6 +19,7 @@
 
 package org.matsim.analysis;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
 import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
@@ -62,14 +61,12 @@ import org.matsim.vehicles.VehicleUtils;
 public class RunOfflineAirPollutionAnalysis {
 	private static final Logger log = Logger.getLogger(RunOfflineAirPollutionAnalysis.class);
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		
 		if ( args.length==0 ) {
-			args = new String[] {"input/berlin-v5.5-1pct.config_2.xml"};
+			args = new String[] {"scenarios/berlin-v5.5-1pct.config.xml"};
 		}
-		
-		double electricVehicleShare = 0.01;
-		
+				
 		Config config = ConfigUtils.loadConfig(args, new AnalysisConfigGroup(), new EmissionsConfigGroup());
 		
 		AnalysisConfigGroup aConfigGroup = (AnalysisConfigGroup) config.getModules().get(AnalysisConfigGroup.GROUP_NAME);
@@ -85,7 +82,7 @@ public class RunOfflineAirPollutionAnalysis {
 		config.global().setNumberOfThreads(1);
 		
 		EmissionsConfigGroup eConfig = ConfigUtils.addOrGetModule(config, EmissionsConfigGroup.class);
-		eConfig.setDetailedVsAverageLookupBehavior(DetailedVsAverageLookupBehavior.directlyTryAverageTable);
+		eConfig.setDetailedVsAverageLookupBehavior(DetailedVsAverageLookupBehavior.tryDetailedThenTechnologyAverageElseAbort);
 		eConfig.setHbefaRoadTypeSource(HbefaRoadTypeSource.fromLinkAttributes);
 		eConfig.setNonScenarioVehicles(NonScenarioVehicles.ignore);
 		
@@ -149,74 +146,149 @@ public class RunOfflineAirPollutionAnalysis {
 				throw new RuntimeException("Link not considered...");
 			}			
 		}
-		
-		// vehicle types
-		
+				
 		// car vehicles
 		
-		Id<VehicleType> carVehicleTypeId = Id.create("car", VehicleType.class);
-		VehicleType carVehicleType = scenario.getVehicles().getVehicleTypes().get(carVehicleTypeId);
+		VehicleType petrolCarVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("petrolCar", VehicleType.class));
+		scenario.getVehicles().addVehicleType(petrolCarVehicleType);
+		EngineInformation petrolCarEngineInformation = petrolCarVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( petrolCarEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( petrolCarEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( petrolCarEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( petrolCarEngineInformation, "petrol (4S)" );
 		
-		EngineInformation carEngineInformation = carVehicleType.getEngineInformation();
-		VehicleUtils.setHbefaVehicleCategory( carEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
-		VehicleUtils.setHbefaTechnology( carEngineInformation, "average" );
-		VehicleUtils.setHbefaSizeClass( carEngineInformation, "average" );
-		VehicleUtils.setHbefaEmissionsConcept( carEngineInformation, "average" );
+		VehicleType dieselCarVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("dieselCar", VehicleType.class));
+		scenario.getVehicles().addVehicleType(dieselCarVehicleType);
+		EngineInformation dieselCarEngineInformation = dieselCarVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( dieselCarEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( dieselCarEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( dieselCarEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( dieselCarEngineInformation, "diesel" );
 		
-		// freight vehicles
-
-		Id<VehicleType> freightVehicleTypeId = Id.create("freight", VehicleType.class);
-		VehicleType freightVehicleType = scenario.getVehicles().getVehicleTypes().get(freightVehicleTypeId);
+		VehicleType cngVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("cngCar", VehicleType.class));
+		scenario.getVehicles().addVehicleType(cngVehicleType);
+		EngineInformation cngCarEngineInformation = cngVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( cngCarEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( cngCarEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( cngCarEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( cngCarEngineInformation, "bifuel CNG/petrol" );
 		
-		EngineInformation freightEngineInformation = freightVehicleType.getEngineInformation();
-		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
-//		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.HEAVY_GOODS_VEHICLE.toString());
-		VehicleUtils.setHbefaTechnology( freightEngineInformation, "average" );
-		VehicleUtils.setHbefaSizeClass( freightEngineInformation, "average" );
-		VehicleUtils.setHbefaEmissionsConcept( freightEngineInformation, "average" );
-
+		VehicleType lpgVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("lpgCar", VehicleType.class));
+		scenario.getVehicles().addVehicleType(lpgVehicleType);
+		EngineInformation lpgCarEngineInformation = lpgVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( lpgCarEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( lpgCarEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( lpgCarEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( lpgCarEngineInformation, "bifuel LPG/petrol" );
+		
 		// electric vehicles
-		Id<VehicleType> electricVehicleTypeId = Id.create("ev", VehicleType.class);
-		VehicleType electricVehicleType = scenario.getVehicles().getFactory().createVehicleType(electricVehicleTypeId);
+		VehicleType electricVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("electricCar", VehicleType.class));
 		scenario.getVehicles().addVehicleType(electricVehicleType);
-		
 		EngineInformation electricEngineInformation = electricVehicleType.getEngineInformation();
-		VehicleUtils.setHbefaVehicleCategory( electricEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
+		VehicleUtils.setHbefaVehicleCategory( electricEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
 		VehicleUtils.setHbefaTechnology( electricEngineInformation, "average" );
 		VehicleUtils.setHbefaSizeClass( electricEngineInformation, "average" );
-		VehicleUtils.setHbefaEmissionsConcept( electricEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( electricEngineInformation, "electricity" );
 		
-		// public transit vehicles should be considered as non-hbefa vehicles
+		// plug-in hybrid petrol vehicles
+		VehicleType pluginHybridPetrolVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("pluginHybridPetrol", VehicleType.class));
+		scenario.getVehicles().addVehicleType(pluginHybridPetrolVehicleType);
+		EngineInformation pluginHybridPetrolEngineInformation = pluginHybridPetrolVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( pluginHybridPetrolEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( pluginHybridPetrolEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( pluginHybridPetrolEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( pluginHybridPetrolEngineInformation, "Plug-in Hybrid petrol/electric" );
+		
+		// plug-in hybrid petrol vehicles
+		VehicleType pluginHybridDieselVehicleType = scenario.getVehicles().getFactory().createVehicleType(Id.create("pluginHybridDiesel", VehicleType.class));
+		scenario.getVehicles().addVehicleType(pluginHybridDieselVehicleType);
+		EngineInformation pluginHybridDieselEngineInformation = pluginHybridDieselVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( pluginHybridDieselEngineInformation, HbefaVehicleCategory.PASSENGER_CAR.toString());
+		VehicleUtils.setHbefaTechnology( pluginHybridDieselEngineInformation, "average" );
+		VehicleUtils.setHbefaSizeClass( pluginHybridDieselEngineInformation, "average" );
+		VehicleUtils.setHbefaEmissionsConcept( pluginHybridDieselEngineInformation, "Plug-in Hybrid diesel/electric" );
+			
+		// ignore default car vehicles
+
+		VehicleType defaultCarVehicleType = scenario.getVehicles().getVehicleTypes().get(Id.create("car", VehicleType.class));
+		EngineInformation carEngineInformation = defaultCarVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( carEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
+		
+		// ignore freight vehicles
+
+		VehicleType freightVehicleType = scenario.getVehicles().getVehicleTypes().get(Id.create("freight", VehicleType.class));
+		EngineInformation freightEngineInformation = freightVehicleType.getEngineInformation();
+		VehicleUtils.setHbefaVehicleCategory( freightEngineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
+		
+		// ignore public transit vehicles
+		
 		for (VehicleType type : scenario.getTransitVehicles().getVehicleTypes().values()) {
 			EngineInformation engineInformation = type.getEngineInformation();
-			// TODO: Check! Is this a zero emission vehicle?!
-			VehicleUtils.setHbefaVehicleCategory( engineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());
-			VehicleUtils.setHbefaTechnology( engineInformation, "average" );
-			VehicleUtils.setHbefaSizeClass( engineInformation, "average" );
-			VehicleUtils.setHbefaEmissionsConcept( engineInformation, "average" );			
+			VehicleUtils.setHbefaVehicleCategory( engineInformation, HbefaVehicleCategory.NON_HBEFA_VEHICLE.toString());		
 		}
 		
 		List<Id<Vehicle>> vehiclesToChangeToElectric = new ArrayList<>();
+		List<Id<Vehicle>> carVehiclesToChangeToSpecificType = new ArrayList<>();
 
 		final Random rnd = MatsimRandom.getLocalInstance();
 
 		int totalVehiclesCounter = 0;
-		int carCounter = 0;
-		int evCounter = 0;
 		// randomly change some vehicle types
 		for (Vehicle vehicle : scenario.getVehicles().getVehicles().values()) {
 			totalVehiclesCounter++;
 			if (vehicle.getId().toString().contains("freight")) {
-				// some freight vehicles have the type "car"
-			} else if (vehicle.getType().getId().toString().equals(carVehicleTypeId.toString())) {
-				carCounter++;
-				if (rnd.nextDouble() < electricVehicleShare) {
-					evCounter++;
+				// some freight vehicles have the type "car", skip them...
+				
+			} else if (vehicle.getType().getId().toString().equals(defaultCarVehicleType.getId().toString())) {
+				
+				carVehiclesToChangeToSpecificType.add(vehicle.getId());
+				
+				if (rnd.nextDouble() < aConfigGroup.getElectricVehicleShare()) {
 					vehiclesToChangeToElectric.add(vehicle.getId());
 				}
 			} else {
 				// ignore all other vehicles
 			}
+		}
+		
+		final double petrolShare = 0.512744724750519;
+		final double dieselShare = 0.462841421365738;
+		final double lpgShare = 0.011381645;
+		final double cngShare = 0.0038579236716032;
+		final double hybridPetrolShare = 0.005743607878685;
+		final double hybridDieselShare = 0.00014232617104426;
+
+		for (Id<Vehicle> id : carVehiclesToChangeToSpecificType) {
+			scenario.getVehicles().removeVehicle(id);
+			
+			VehicleType vehicleType;
+			double rndNumber = rnd.nextDouble();
+			if (rndNumber < petrolShare) {
+				// petrol
+				vehicleType = petrolCarVehicleType;
+			} else if (rndNumber >= petrolShare && rndNumber < petrolShare + dieselShare) {
+				// diesel
+				vehicleType = dieselCarVehicleType;
+			} else if (rndNumber >= petrolShare + dieselShare && rndNumber < petrolShare + dieselShare + lpgShare) {
+				// lpg
+				vehicleType = lpgVehicleType;
+			} else if (rndNumber >= petrolShare + dieselShare + lpgShare && rndNumber < petrolShare + dieselShare + lpgShare + cngShare) {
+				// cng
+				vehicleType = cngVehicleType;
+			} else if (rndNumber >= petrolShare + dieselShare + lpgShare + cngShare && rndNumber < petrolShare + dieselShare + lpgShare + cngShare + hybridPetrolShare) {
+				// hybrid petrol
+				vehicleType = pluginHybridPetrolVehicleType;
+			} else if (rndNumber >= petrolShare + dieselShare + lpgShare + cngShare + hybridPetrolShare && rndNumber < petrolShare + dieselShare + lpgShare + cngShare + hybridPetrolShare + hybridDieselShare) {
+				// hybrid diesel
+				vehicleType = pluginHybridDieselVehicleType;
+			} else {
+				// electric
+				vehicleType = electricVehicleType;
+			}
+			
+			Vehicle vehicleNew = scenario.getVehicles().getFactory().createVehicle(id, vehicleType);
+			scenario.getVehicles().addVehicle(vehicleNew);
+			log.info("Type for vehicle " + id + " changed to: " + vehicleType.getId().toString());
 		}
 				
 		for (Id<Vehicle> id : vehiclesToChangeToElectric) {
@@ -257,28 +329,68 @@ public class RunOfflineAirPollutionAnalysis {
         emissionEventWriter.closeFile();
         
         log.info("Total number of vehicles: " + totalVehiclesCounter);
-		log.info("Number of car vehicles: " + carCounter);
-		log.info("Number of electric vehicles: " + evCounter);
+		log.info("Number of passenger car vehicles: " + carVehiclesToChangeToSpecificType.size());
+		log.info("Number of passenger car vehicles that are changed to electric vehicles: " + vehiclesToChangeToElectric.size());
 
         log.info("Emission analysis completed.");
         
-        log.info("Writing output...");   
-        
-        try (CSVPrinter printer = new CSVPrinter(new FileWriter(analysisOutputDirectory + aConfigGroup.getRunId() + ".emissionsPerLink"), CSVFormat.DEFAULT)) {
+        log.info("Writing output..."); 
+		
+        {
+        	String fileName = analysisOutputDirectory + aConfigGroup.getRunId() + ".emissionsPerLink.csv";
+    		File file1 = new File(fileName);
+    		
+    		BufferedWriter bw1 = new BufferedWriter(new FileWriter(file1));
 
-            // write header
-            printer.printRecord("LinkID", Pollutant.CO2_TOTAL, Pollutant.NOx, Pollutant.PM, Pollutant.SO2);
+    		bw1.write("linkId");
+    		
+    		for (Pollutant pollutant : Pollutant.values()) {
+    			bw1.write(";" + pollutant);
+    		}
+    		bw1.newLine();
+    		
+    		Map<Id<Link>, Map<Pollutant, Double>> link2pollutants = emissionsEventHandler.getLink2pollutants();
+    		
+    		for (Id<Link> linkId : link2pollutants.keySet()) {
+    			bw1.write(linkId.toString());
 
-            // write values
-            for (Id<Link> linkId : emissionsEventHandler.getLink2pollutants().keySet()) {
-            	Map<Pollutant, Double> pollutants = emissionsEventHandler.getLink2pollutants().get(linkId);
-                printer.printRecord(linkId, pollutants.get(Pollutant.CO2_TOTAL), pollutants.get(Pollutant.NOx), pollutants.get(Pollutant.PM), pollutants.get(Pollutant.SO2));
-            }
-            
-        } catch (IOException e) {
-            e.printStackTrace();
+    			for (Pollutant pollutant : Pollutant.values()) {
+    				double value = 0.;
+    				if (link2pollutants.get(linkId).get(pollutant) != null) {
+    					value = link2pollutants.get(linkId).get(pollutant);
+    				}
+    				bw1.write(";" + value);
+    			}
+    			bw1.newLine();
+    		}
+    		
+    		bw1.close();
+    		log.info("Output written to " + fileName);
         }
-        
+		
+		{
+			String fileName2 = analysisOutputDirectory + aConfigGroup.getRunId() + ".vehicleTypes.csv";
+			File file2 = new File(fileName2);
+			
+			BufferedWriter bw2 = new BufferedWriter(new FileWriter(file2));
+
+			bw2.write("vehicleId;vehicleType;emissionsConcept");	
+			bw2.newLine();
+			
+			for (Vehicle vehicle : scenario.getVehicles().getVehicles().values()) {
+				String emissionsConcept = "null";
+				if (vehicle.getType().getEngineInformation() != null && VehicleUtils.getHbefaEmissionsConcept(vehicle.getType().getEngineInformation()) != null) {
+					emissionsConcept = VehicleUtils.getHbefaEmissionsConcept(vehicle.getType().getEngineInformation()).toString();
+				}
+				
+				bw2.write(vehicle.getId() + ";" + vehicle.getType().getId().toString() + ";" + emissionsConcept);
+				bw2.newLine();
+			}
+			
+			bw2.close();
+			log.info("Output written to " + fileName2);
+		}
+		
 	}
 
 }

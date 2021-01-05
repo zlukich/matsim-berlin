@@ -20,8 +20,6 @@
 package org.matsim.analysis;
 
 import org.matsim.core.config.ReflectiveConfigGroup;
-import org.matsim.core.config.ReflectiveConfigGroup.StringGetter;
-import org.matsim.core.config.ReflectiveConfigGroup.StringSetter;
 
 /**
  * 
@@ -37,6 +35,7 @@ public class AnalysisConfigGroup extends ReflectiveConfigGroup {
 	
 	private String runDirectory = "public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-1pct/output-berlin-v5.4-1pct/";
 	private String runId = "berlin-v5.4-1pct";
+	private double electricVehicleShare = 0.01;
 	
 	@StringGetter( "runDirectory" )
 	public String getRunDirectory() {
@@ -55,6 +54,15 @@ public class AnalysisConfigGroup extends ReflectiveConfigGroup {
 	@StringSetter( "runId" )
 	public void setRunId(String runId) {
 		this.runId = runId;
+	}
+	
+	@StringGetter( "vehicleShareChangeToElectricVehicle" )	
+	public double getElectricVehicleShare() {
+		return electricVehicleShare;
+	}
+	@StringSetter( "vehicleShareChangeToElectricVehicle" )
+	public void setElectricVehicleShare(double electricVehicleShare) {
+		this.electricVehicleShare = electricVehicleShare;
 	}
 	
 }
