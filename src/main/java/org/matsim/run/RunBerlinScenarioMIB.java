@@ -64,14 +64,16 @@ import org.matsim.core.scoring.functions.ScoringParameters;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.core.scoring.functions.SubpopulationScoringParameters;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.extensions.pt.replanning.singleTripStrategies.ChangeSingleTripModeAndRoute;
+import org.matsim.extensions.pt.replanning.singleTripStrategies.RandomSingleTripReRoute;
+import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
 import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
-import org.matsim.run.singleTripStrategies.ChangeSingleTripModeAndRoute;
-import org.matsim.run.singleTripStrategies.RandomSingleTripReRoute;
 import org.matsim.vehicles.VehicleType;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.inject.Singleton;
 
 import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.CapacityDependentInVehicleCostCalculator;
@@ -81,15 +83,16 @@ import ch.sbb.matsim.routing.pt.raptor.OccupancyTracker;
 import ch.sbb.matsim.routing.pt.raptor.RaptorInVehicleCostCalculator;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
+import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
 /**
 * @author ikaddoura
 * hmarciales
 */
 
-public final class RunBerlinScenarioMiB {
+public final class RunBerlinScenarioMIB {
 
-	private static final Logger log = Logger.getLogger(RunBerlinScenarioMiB.class );
+	private static final Logger log = Logger.getLogger(RunBerlinScenarioMIB.class );
 
 	public static void main(String[] args) {
 		
@@ -104,18 +107,18 @@ public final class RunBerlinScenarioMiB {
 		var arguments = new InputArgs();
 		JCommander.newBuilder().addObject(arguments).build().parse(args);
 
-		Config config = prepareConfig( new String[] {"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"} ) ;
+		Config config = prepareConfig( new String[] {"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-1pct/input/berlin-v5.5-1pct.config.xml"} ) ;
 		
 		config.controler().setOutputDirectory(arguments.outputFile);
 		config.controler().setOverwriteFileSetting(OverwriteFileSetting.deleteDirectoryIfExists);
-		config.controler().setLastIteration(0);
+		config.controler().setLastIteration(500);
 		
 		config.network().setInputFile(arguments.inputFile + "berlin-v5.5-network.xml.gz");
 		config.getModules().get("transit").getParams().put("transitScheduleFile", arguments.inputFile + "/berlin-v5.5-transit-schedule.xml.gz");
 		config.getModules().get("transit").getParams().put("vehiclesFile", arguments.inputFile + "/berlin-v5.5-transit-vehicles.xml.gz");
 		
 		Scenario scenario = prepareScenario( config ) ;
-		RunBerlinScenarioMiB.reduceVehicleCapacityPt(scenario, 10.0);
+		RunBerlinScenarioMIB.reduceVehicleCapacityPt(scenario, 10.0);
 		Controler controler = prepareControler( scenario ) ;
 		
 			
@@ -170,7 +173,10 @@ public final class RunBerlinScenarioMiB {
 				addPlanStrategyBinding("RandomSingleTripReRoute").toProvider(RandomSingleTripReRoute.class);
 				addPlanStrategyBinding("ChangeSingleTripModeAndRoute").toProvider(ChangeSingleTripModeAndRoute.class);
 
-				bind(RaptorIntermodalAccessEgress.class).to(BerlinRaptorIntermodalAccessEgress.class);
+				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
+
+				//use income-dependent marginal utility of money for scoring
+				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
 			}
 		} );
 
