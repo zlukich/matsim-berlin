@@ -44,15 +44,20 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Injector;
+import org.matsim.core.events.EventsManagerImpl;
 import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
+import org.matsim.core.events.ParallelEventsManager;
 import org.matsim.core.events.algorithms.EventWriterXML;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.vehicles.EngineInformation;
+import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
+
+import com.google.inject.Singleton;
 
 /**
 * @author ikaddoura
@@ -61,13 +66,13 @@ import org.matsim.vehicles.VehicleUtils;
 public class RunOfflineAirPollutionAnalysisByEngineInformation {
 	private static final Logger log = Logger.getLogger(RunOfflineAirPollutionAnalysisByEngineInformation.class);
 	
-	private final static String runDirectory = "public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-1pct/output-berlin-v5.4-1pct/";	
-	private final static String runId = "berlin-v5.4-1pct";
+	private final static String runDirectory = "public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/output-berlin-v5.4-10pct/";	
+	private final static String runId = "berlin-v5.4-10pct";
 
 	private final static String hbefaFileCold = "shared-svn/projects/matsim-germany/hbefa/hbefa-files/v4.1/EFA_ColdStart_Concept_2020_detailed_perTechAverage_Bln_carOnly.csv";
 	private final static String hbefaFileWarm = "shared-svn/projects/matsim-germany/hbefa/hbefa-files/v4.1/EFA_HOT_Concept_2020_detailed_perTechAverage_Bln_carOnly.csv";
 
-	private final static double shareOfPrivateVehiclesChangedToElectric = 0.01; // in addition to electric vehicle share in the reference case!
+	private final static double shareOfPrivateVehiclesChangedToElectric = 0.5; // in addition to electric vehicle share in the reference case!
 	private final static String analysisOutputDirectoryName = "emissionAnalysis-hbefa4.1-ev" + shareOfPrivateVehiclesChangedToElectric;
 
 	public static void main(String[] args) throws IOException {
@@ -100,16 +105,20 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 		eConfig.setDetailedWarmEmissionFactorsFile(rootDirectory + hbefaFileWarm);
 		eConfig.setHbefaRoadTypeSource(HbefaRoadTypeSource.fromLinkAttributes);
 		eConfig.setNonScenarioVehicles(NonScenarioVehicles.ignore);
-//		eConfig.setWritingEmissionsEvents(false);
+		eConfig.setWritingEmissionsEvents(true);
 		
 		String analysisOutputDirectory = rootDirectory + runDirectory + analysisOutputDirectoryName + "/";
 		File folder = new File(analysisOutputDirectory);			
 		folder.mkdirs();
 		
-		final String emissionEventOutputFile = rootDirectory + runDirectory + runId + ".emission.events.offline.xml.gz";
+		// input
 		final String eventsFile = rootDirectory + runDirectory + runId + ".output_events.xml.gz";
+		
+		// output
+		final String emissionEventOutputFile = analysisOutputDirectory + runId + ".emission.events.offline.xml.gz";
 		final String linkEmissionAnalysisFile = analysisOutputDirectory + runId + ".emissionsPerLink.csv";
 		final String vehicleTypeFile = analysisOutputDirectory + runId + ".emissionVehicleInformation.csv";
+		final String vehiclesFile = analysisOutputDirectory + runId + ".emissionVehicles.xml.gz";
 
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		
@@ -316,15 +325,18 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 		
 		// the following is copy paste from the example...
 		
-//		EventsManager eventsManager = new ParallelEventsManager(false, 1, 16777216);
-		EventsManager eventsManager = EventsUtils.createEventsManager();
-
+//		EventsManager eventsManager = EventsUtils.createEventsManager();
+//		EventsManager eventsManager = new ParallelEventsManager(false, 1000000 * 2);
+		EventsManager eventsManager = new EventsManagerImpl();
+		
 		AbstractModule module = new AbstractModule(){
 			@Override
 			public void install(){
 				bind( Scenario.class ).toInstance( scenario );
-				bind( EventsManager.class ).toInstance( eventsManager );
+				bind( EventsManager.class ).toInstance(eventsManager);
+				
 				bind( EmissionModule.class ) ;
+				
 			}
 		};
 
@@ -332,13 +344,13 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 
         EmissionModule emissionModule = injector.getInstance(EmissionModule.class);
         
-        EventWriterXML emissionEventWriter = new EventWriterXML(emissionEventOutputFile);
+        EventWriterXML emissionEventWriter = new EventWriterXML(emissionEventOutputFile);        
         emissionModule.getEmissionEventsManager().addHandler(emissionEventWriter);
-
-        EmissionsOnLinkHandler emissionsEventHandler = new EmissionsOnLinkHandler();
-		eventsManager.addHandler(emissionsEventHandler);
         
-        eventsManager.initProcessing();
+		EmissionsOnLinkHandler emissionsOnLinkEventHandler = new EmissionsOnLinkHandler();
+		eventsManager.addHandler(emissionsOnLinkEventHandler);
+        
+		eventsManager.initProcessing();
         
         MatsimEventsReader matsimEventsReader = new MatsimEventsReader(eventsManager);
         matsimEventsReader.readFile(eventsFile);
@@ -370,7 +382,7 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
     		}
     		bw1.newLine();
     		
-    		Map<Id<Link>, Map<Pollutant, Double>> link2pollutants = emissionsEventHandler.getLink2pollutants();
+			Map<Id<Link>, Map<Pollutant, Double>> link2pollutants = emissionsOnLinkEventHandler.getLink2pollutants();
     		
     		for (Id<Link> linkId : link2pollutants.keySet()) {
     			bw1.write(linkId.toString());
@@ -410,6 +422,8 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 			bw2.close();
 			log.info("Output written to " + vehicleTypeFile);
 		}
+		
+		new MatsimVehicleWriter( scenario.getVehicles() ).writeFile( vehiclesFile );
 		
 	}
 
