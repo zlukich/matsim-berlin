@@ -286,7 +286,13 @@
 					<archive>
 						<manifest>
 							<mainClass>org.matsim.gui.RunBerlinScenarioGUI</mainClass>
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
 						</manifest>
+					    <manifestEntries>
+                            <Specification-Vendor>MATSim</Specification-Vendor>
+                            <Implementation-Vendor>MATSim</Implementation-Vendor>
+            </manifestEntries>
 					</archive>
 				</configuration>
 				<executions>

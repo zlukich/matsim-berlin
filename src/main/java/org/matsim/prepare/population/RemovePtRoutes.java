@@ -56,7 +56,7 @@ public class RemovePtRoutes {
 	public static void main(String[] args) {
 		Config config = ConfigUtils.createConfig();
 		config.global().setCoordinateSystem("EPSG:31468");
-		config.network().setInputFile("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-network.xml.gz");
+		config.network().setInputFile("D:/GIT/MATSim/matsim-berlin/RunGTFS2MATSimMiB_base_var2/berlin-v5.5-network.xml.gz");
 		config.plans().setInputFile("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-10pct.plans.xml.gz");
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		
