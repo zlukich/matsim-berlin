@@ -32,6 +32,7 @@ import org.apache.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.contrib.emissions.EmissionModule;
 import org.matsim.contrib.emissions.HbefaVehicleCategory;
 import org.matsim.contrib.emissions.Pollutant;
@@ -45,9 +46,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Injector;
 import org.matsim.core.events.EventsManagerImpl;
-import org.matsim.core.events.EventsUtils;
 import org.matsim.core.events.MatsimEventsReader;
-import org.matsim.core.events.ParallelEventsManager;
 import org.matsim.core.events.algorithms.EventWriterXML;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.scenario.ScenarioUtils;
@@ -56,8 +55,6 @@ import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
-
-import com.google.inject.Singleton;
 
 /**
 * @author ikaddoura
@@ -73,8 +70,8 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 	private final static String hbefaFileWarm = "shared-svn/projects/matsim-germany/hbefa/hbefa-files/v4.1/EFA_HOT_Concept_2020_detailed_perTechAverage_Bln_carOnly.csv";
 
 	private final static double shareOfPrivateVehiclesChangedToElectric = 0.5; // in addition to electric vehicle share in the reference case!
-	private final static String analysisOutputDirectoryName = "emissionAnalysis-hbefa4.1-ev" + shareOfPrivateVehiclesChangedToElectric;
-
+	private final static String analysisOutputDirectoryName = "emissionAnalysis-hbefa4.1-onlyBerlinResidentss-ev" + shareOfPrivateVehiclesChangedToElectric;
+	
 	public static void main(String[] args) throws IOException {
 		
 		String rootDirectory = null;
@@ -93,8 +90,8 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 		config.network().setInputFile(rootDirectory + runDirectory + runId + ".output_network.xml.gz");
 		config.transit().setTransitScheduleFile(rootDirectory + runDirectory + runId + ".output_transitSchedule.xml.gz");
 		config.transit().setVehiclesFile(rootDirectory + runDirectory + runId + ".output_transitVehicles.xml.gz");
+		config.plans().setInputFile(rootDirectory + runDirectory + runId + ".output_plans.xml.gz");
 		config.global().setCoordinateSystem("GK4");
-		config.plans().setInputFile(null);
 		config.parallelEventHandling().setNumberOfThreads(null);
 		config.parallelEventHandling().setEstimatedNumberOfEvents(null);
 		config.global().setNumberOfThreads(1);
@@ -261,10 +258,17 @@ public class RunOfflineAirPollutionAnalysisByEngineInformation {
 		// randomly change some vehicle types
 		for (Vehicle vehicle : scenario.getVehicles().getVehicles().values()) {
 			totalVehiclesCounter++;
+			Id<Person> expectedPersonId = Id.createPersonId(vehicle.getId().toString());
+			String homeLocation = null;
+			if (scenario.getPopulation().getPersons().get(expectedPersonId) != null) {
+				Person vehicleOwner = scenario.getPopulation().getPersons().get(expectedPersonId);
+				homeLocation = (String) vehicleOwner.getAttributes().getAttribute("home-activity-zone");
+			}
+			
 			if (vehicle.getId().toString().contains("freight")) {
 				// some freight vehicles have the type "car", skip them...
 				
-			} else if (vehicle.getType().getId().toString().equals(defaultCarVehicleType.getId().toString())) {
+			} else if (homeLocation != null && homeLocation.equals("berlin") && vehicle.getType().getId().toString().equals(defaultCarVehicleType.getId().toString())) {
 				
 				carVehiclesToChangeToSpecificType.add(vehicle.getId());
 				
