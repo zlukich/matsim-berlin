@@ -19,7 +19,6 @@
 
 package org.matsim.run;
 
-import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
 import org.apache.log4j.Logger;
@@ -30,6 +29,7 @@ import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.contrib.drt.routing.DrtRoute;
 import org.matsim.contrib.drt.routing.DrtRouteFactory;
+import org.matsim.core.api.experimental.events.EventsManager;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigGroup;
 import org.matsim.core.config.ConfigUtils;
@@ -39,7 +39,9 @@ import org.matsim.core.config.groups.QSimConfigGroup.TrafficDynamics;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
+import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.controler.OutputDirectoryLogging;
+import org.matsim.core.events.SimStepParallelEventsManagerImpl;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.population.routes.RouteFactories;
@@ -74,13 +76,31 @@ public final class RunBerlinScenario {
 		}
 		
 		if ( args.length==0 ) {
-			args = new String[] {"scenarios/berlin-v5.5-10pct/input/berlin-v5.5-10pct.config.xml"}  ;
+			args = new String[] {"C:\\Users\\Janekdererste\\Projects\\matsim-berlin\\scenarios\\berlin-v5.5-1pct\\input\\berlin-v5.5-1pct.config.xml"}  ;
 		}
 
 		Config config = prepareConfig( args ) ;
+
+		config.parallelEventHandling().setNumberOfThreads(1);
+		config.parallelEventHandling().setSynchronizeOnSimSteps(true);
+		config.parallelEventHandling().setOneThreadPerHandler(false);
+		config.controler().setFirstIteration(0);
+		config.controler().setLastIteration(2);
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
+
 		Scenario scenario = prepareScenario( config ) ;
 		Controler controler = prepareControler( scenario ) ;
+
+		controler.addOverridingModule(new AbstractModule() {
+			@Override
+			public void install() {
+				bind(EventsManager.class).to(SimStepParallelEventsManagerImpl.class).in(javax.inject.Singleton.class);
+			}
+		});
+
+		var start = System.nanoTime();
 		controler.run();
+		log.info((System.nanoTime() - start) / 1000000000.0 + "s");
 	}
 
 	public static Controler prepareControler( Scenario scenario ) {
