@@ -74,10 +74,11 @@ public class RunBerlinScenarioMIBTest {
 			 */
 
 			Config config =  RunBerlinScenarioMIBerlinCapacitydependent.prepareConfig( args );
-			config.controler().setLastIteration(5);
-
+			config.controler().setLastIteration(1);
+			
 			config.strategy().setFractionOfIterationsToDisableInnovation(5);
 			config.strategy().clearStrategySettings();
+			RunBerlinScenarioMIBerlinCapacitydependent.setPTScoringParameter(config);
 			
 			StrategyConfigGroup.StrategySettings stratSets = new StrategyConfigGroup.StrategySettings();
 			stratSets.setStrategyName("ReRoute");

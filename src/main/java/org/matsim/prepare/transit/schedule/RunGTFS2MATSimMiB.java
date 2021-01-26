@@ -22,11 +22,19 @@
  */
 package org.matsim.prepare.transit.schedule;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
+import org.apache.commons.math3.analysis.function.Pow;
+import org.apache.commons.math3.ml.distance.EuclideanDistance;
 import org.apache.log4j.Logger;
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -46,7 +54,9 @@ import org.matsim.core.network.io.NetworkWriter;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.core.utils.io.IOUtils;
 import org.matsim.core.utils.io.MatsimFileTypeGuesser;
+import org.matsim.core.utils.misc.OptionalTime;
 import org.matsim.prepare.transit.schedule.CheckPtDelays.DelayRecord;
 import org.matsim.pt.transitSchedule.api.Departure;
 import org.matsim.pt.transitSchedule.api.TransitLine;
@@ -63,6 +73,10 @@ import org.matsim.vehicles.VehicleCapacity;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.MatsimVehicleWriter;
 import org.matsim.vehicles.VehiclesFactory;
+
+import com.graphhopper.jsprit.core.util.Coordinate;
+import com.graphhopper.jsprit.core.util.EuclideanDistanceCalculator;
+
 import org.matsim.vehicles.VehicleType.DoorOperationMode;
 import org.matsim.vehicles.VehicleUtils;
 
@@ -89,7 +103,7 @@ public class RunGTFS2MATSimMiB {
 		// http://www.vbb.de/de/article/fahrplan/webservices/datensaetze/1186967.html
 		
 		//input data, https paths don't work probably due to old GTFS library :(
-		String gtfsZipFile = "D:\\TuBCloud\\Shared\\Masterarbeit Hugo Castro MIB\\BBX_December\\gtfs_nullfall_var1_202012_abc.zip"; 
+		String gtfsZipFile = "D:\\TuBCloud\\Shared\\Masterarbeit Hugo Castro MIB\\BBX_December\\gtfs_gesamter_vbb_bbx_in_abc_K2.zip"; 
 		CoordinateTransformation ct = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, TransformationFactory.DHDN_GK4);
 		// choose date not too far away (e.g. on 2019-12-12 S2 is almost completey missing for 2019-08-20 gtfs data set!), 
 		// but not too close either (diversions and interruptions due to short term construction work included in GTFS)
@@ -99,7 +113,7 @@ public class RunGTFS2MATSimMiB {
 		LocalDate date = LocalDate.parse("2020-12-15"); 
 
 		//output files
-		String outputDirectory = "RunGTFS2MATSimMiB_base_var1";
+		String outputDirectory = "RunGTFS2MATSimMiB_policy_21-20";
 		String networkFile = outputDirectory + "/berlin-v5.5-network.xml.gz";
 		String scheduleFile = outputDirectory + "/berlin-v5.5-transit-schedule.xml.gz";
 		String transitVehiclesFile = outputDirectory + "/berlin-v5.5-transit-vehicles.xml.gz";
@@ -116,7 +130,10 @@ public class RunGTFS2MATSimMiB {
 		//Parse the schedule again
 		Scenario scenario = ScenarioUtils.createScenario(ConfigUtils.createConfig());
 		new TransitScheduleReader(scenario).readFile(scheduleFile);
-			
+		
+		// copy late/early departures to have at complete schedule from ca. 0:00 to ca. 30:00 
+		TransitSchedulePostProcessTools.copyEarlyDeparturesToFollowingNight(scenario.getTransitSchedule(), 6 * 3600, "copied");
+		
 		//if necessary, parse in an existing network file here:
 		new MatsimNetworkReader(scenario.getNetwork()).readFile("../public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/input/berlin-v5-network.xml.gz");
 		
@@ -136,6 +153,8 @@ public class RunGTFS2MATSimMiB {
 			log.error(checkResult.getErrors());
 			throw new RuntimeException("TransitSchedule and/or Network invalid");
 		}
+		
+		checkSpeedRoutes(scenario.getTransitSchedule(), outputDirectory + "/checkreport.txt", outputDirectory + "/reports.txt");
 		
 		//Write out network, vehicles and schedule
 		new NetworkWriter(networkWoPt).write(networkFile);
@@ -424,4 +443,61 @@ public class RunGTFS2MATSimMiB {
 		
 		controler.run();
 	}
+	
+	private static void checkSpeedRoutes(TransitSchedule schedule, String bericht, String csv)
+	{
+		log.info("Checking consistency of speed in transit routes");
+	    BufferedWriter bw = IOUtils.getBufferedWriter(bericht);
+	    BufferedWriter bwa = IOUtils.getBufferedWriter(csv);
+		for (Id<TransitLine> id: schedule.getTransitLines().keySet() )
+//		if (schedule.getTransitLines().get(id).getAttributes().getAttribute("gtfs_route_type") == "117" ) {
+			for (Id<TransitRoute> routeid: schedule.getTransitLines().get(id).getRoutes().keySet() ) {
+				for (int i = 0; i < schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().size() - 1; i++) {
+					double x = calculateDistance(schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getCoord(), schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i+1).getStopFacility().getCoord());
+					double  t = schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i+1).getArrivalOffset().seconds() - schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getDepartureOffset().seconds();
+					if (t < mindTravelTime(120.0, 1, 1, x)) {
+					log.warn("Vehicle in Route: " + schedule.getTransitLines().get(id).getRoutes().get(routeid).toString() + " has an speed of " + (x/t) + " m/s betweeen transitstops " + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getName().toString() + " and " + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i+1).getStopFacility().getName().toString());
+				    try {
+			          bw.write("Vehicle in Route: " + schedule.getTransitLines().get(id).getRoutes().get(routeid).toString() + " has an speed of " + (x/t) + " m/s betweeen transitstops " + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getName().toString() + " and " + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i+1).getStopFacility().getName().toString());
+			          bw.newLine();
+			          bw.write("Theorical TravelTime should be " + mindTravelTime(120.0, 1, 1, x) + " seconds, available travel time in the schedule is " + t + " seconds" );
+			          bw.newLine();
+			          bwa.write(schedule.getTransitLines().get(id).getRoutes().get(routeid).toString()+ ";" + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getName().toString()+ ";" + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i+1).getStopFacility().getName().toString() + ";" + x/t + ";" + t + ";" + mindTravelTime(120.0, 1, 1, x));
+					  bwa.newLine();
+				    }catch (IOException e) {
+			          // TODO Auto-generated catch block
+			          e.printStackTrace();
+			      }
+				}
+				}
+			}
+//		}
+	}
+	
+	
+	public static double calculateDistance(Coord coord1, Coord coord2) 
+	{
+	        double xDiff = coord1.getX() - coord2.getX();
+	        double yDiff = coord1.getY() - coord2.getY();
+	        return Math.sqrt((xDiff * xDiff) + (yDiff * yDiff));
+	    }
+	
+	public static double mindTravelTime (double maxspeed, double accel, double daccel, double x)
+	{
+		double mindDistance = 0;
+		double accelTime = (maxspeed/3.6)/accel;
+		double daccelTime = (maxspeed/3.6)/daccel;
+		double accelDistance = (maxspeed/3.6)*(maxspeed/3.6)/(2*accel);
+		double daccelDistance = (maxspeed/3.6)*(maxspeed/3.6)/(2*daccel);
+		double velmaxDistance = daccelDistance + accelDistance;
+ 	    if(x >= velmaxDistance) 
+ 	    {
+ 	    	mindDistance = accelTime + daccelTime + (x-velmaxDistance)/maxspeed;
+ 	    } if (x < velmaxDistance )
+ 	    {
+ 	    	mindDistance = Math.pow((( Math.pow(accel, 3.0) + Math.pow(daccel, 3.0) ) /  Math.pow(accel, 2.0)), 1/2 ) * (1+ daccel/ accel);
+ 	    }
+ 	   return mindDistance;
+	}
+ 	    
 }
