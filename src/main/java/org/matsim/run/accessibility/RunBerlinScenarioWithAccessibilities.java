@@ -31,6 +31,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
+import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.facilities.ActivityFacilities;
 import org.matsim.run.RunBerlinScenario;
 
@@ -85,9 +86,12 @@ public final class RunBerlinScenarioWithAccessibilities {
 
         Config config = RunBerlinScenario.prepareConfig(args, customModulesAll);
 
-        config.controler().setOutputDirectory("../../shared-svn/projects/accessibility-berlin/output/v4/5000_8h05_school/");
+//        config.controler().setOutputDirectory("../../shared-svn/projects/accessibility-berlin/output/v4/5000_8h05_school/");
+		config.controler().setOutputDirectory("output/accessibility");
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
 
-        File opportunitiesFile = new File("../../shared-svn/projects/accessibility-berlin/osm/berlin/amenities/2018-05-30/facilities_classified.xml");
+
+		File opportunitiesFile = new File("../../svn/shared-svn/projects/accessibility-berlin/osm/berlin/amenities/2018-05-30/facilities_classified.xml");
         config.facilities().setInputFile(opportunitiesFile.getAbsolutePath());
 
 
@@ -96,7 +100,7 @@ public final class RunBerlinScenarioWithAccessibilities {
         AccessibilityConfigGroup acg = ConfigUtils.addOrGetModule(config, AccessibilityConfigGroup.class);
         acg.setTimeOfDay((8*60.+5.)*60.);
         acg.setAreaOfAccessibilityComputation(AccessibilityConfigGroup.AreaOfAccesssibilityComputation.fromShapeFile);
-        acg.setShapeFileCellBasedAccessibility("../../shared-svn/studies/countries/de/open_berlin_scenario/input/shapefiles/2013/Berlin_DHDN_GK4.shp");
+        acg.setShapeFileCellBasedAccessibility("../../svn/shared-svn/studies/countries/de/open_berlin_scenario/input/shapefiles/2013/Berlin_DHDN_GK4.shp");
         acg.setTileSize_m(5000);
         acg.setComputingAccessibilityForMode(Modes4Accessibility.freespeed, false);
         acg.setComputingAccessibilityForMode(Modes4Accessibility.car, false);
