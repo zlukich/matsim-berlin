@@ -64,9 +64,7 @@ import org.matsim.core.scoring.functions.ScoringParameters;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
 import org.matsim.core.scoring.functions.SubpopulationScoringParameters;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
-import org.matsim.extensions.pt.replanning.singleTripStrategies.ChangeSingleTripModeAndRoute;
-import org.matsim.extensions.pt.replanning.singleTripStrategies.RandomSingleTripReRoute;
-import org.matsim.extensions.pt.routing.EnhancedRaptorIntermodalAccessEgress;
+import org.matsim.prepare.population.AssignIncome;
 import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
 import org.matsim.vehicles.VehicleType;
@@ -145,9 +143,6 @@ public final class RunBerlinScenarioMIB {
 		
 		if (controler.getConfig().transit().isUseTransit()) {
 			// use the sbb pt raptor router
-			
-			ConfigUtils.addOrGetModule(scenario.getConfig(), SwissRailRaptorConfigGroup.class).setUseCapacityConstraints(true);
-			
 			controler.addOverridingModule( new AbstractModule() {
 				@Override
 				public void install() {
@@ -170,11 +165,6 @@ public final class RunBerlinScenarioMIB {
 				addTravelDisutilityFactoryBinding( TransportMode.ride ).to( carTravelDisutilityFactoryKey() );
 				bind(AnalysisMainModeIdentifier.class).to(OpenBerlinIntermodalPtDrtRouterModeIdentifier.class);
 				
-				addPlanStrategyBinding("RandomSingleTripReRoute").toProvider(RandomSingleTripReRoute.class);
-				addPlanStrategyBinding("ChangeSingleTripModeAndRoute").toProvider(ChangeSingleTripModeAndRoute.class);
-
-				bind(RaptorIntermodalAccessEgress.class).to(EnhancedRaptorIntermodalAccessEgress.class);
-
 				//use income-dependent marginal utility of money for scoring
 				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
 			}
@@ -206,7 +196,8 @@ public final class RunBerlinScenarioMIB {
 		if (berlinCfg.getPopulationDownsampleFactor() != 1.0) {
 			downsample(scenario.getPopulation().getPersons(), berlinCfg.getPopulationDownsampleFactor());
 		}
-		
+
+		AssignIncome.assignIncomeToPersonSubpopulationAccordingToGermanyAverage(scenario.getPopulation());
 		return scenario;
 	}
 
@@ -219,11 +210,11 @@ public final class RunBerlinScenarioMIB {
 		
 		String[] typedArgs = Arrays.copyOfRange( args, 1, args.length );
 		
-		ConfigGroup[] customModulesToAdd = null ;
-		if ( additionalInformation== RunDrtOpenBerlinScenario.AdditionalInformation.acceptUnknownParamsBerlinConfig ) {
-			customModulesToAdd = new ConfigGroup[]{ new BerlinExperimentalConfigGroup(true) };
+		ConfigGroup[] customModulesToAdd;
+		if (additionalInformation == RunDrtOpenBerlinScenario.AdditionalInformation.acceptUnknownParamsBerlinConfig) {
+			customModulesToAdd = new ConfigGroup[]{new BerlinExperimentalConfigGroup(true)};
 		} else {
-			customModulesToAdd = new ConfigGroup[]{ new BerlinExperimentalConfigGroup(false) };
+			customModulesToAdd = new ConfigGroup[]{new BerlinExperimentalConfigGroup(false)};
 		}
 		ConfigGroup[] customModulesAll = new ConfigGroup[customModules.length + customModulesToAdd.length];
 		
@@ -267,8 +258,6 @@ public final class RunBerlinScenarioMIB {
 			config.planCalcScore().addActivityParams( new ActivityParams( "other_" + ii + ".0" ).setTypicalDuration( ii ) );
 		}
 		config.planCalcScore().addActivityParams( new ActivityParams( "freight" ).setTypicalDuration( 12.*3600. ) );
-		
-		
 
 		ConfigUtils.applyCommandline( config, typedArgs ) ;
 

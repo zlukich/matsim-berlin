@@ -103,7 +103,7 @@ public class RunGTFS2MATSimMiB {
 		// http://www.vbb.de/de/article/fahrplan/webservices/datensaetze/1186967.html
 		
 		//input data, https paths don't work probably due to old GTFS library :(
-		String gtfsZipFile = "D:\\TuBCloud\\Shared\\Masterarbeit Hugo Castro MIB\\BBX_December\\gtfs_gesamter_vbb_bbx_in_abc_K2.zip"; 
+		String gtfsZipFile = "D:\\TuBCloud\\Shared\\Masterarbeit Hugo Castro MIB\\BBX_Maerz\\BBX_maerz.zip"; 
 		CoordinateTransformation ct = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, TransformationFactory.DHDN_GK4);
 		// choose date not too far away (e.g. on 2019-12-12 S2 is almost completey missing for 2019-08-20 gtfs data set!), 
 		// but not too close either (diversions and interruptions due to short term construction work included in GTFS)
@@ -113,7 +113,7 @@ public class RunGTFS2MATSimMiB {
 		LocalDate date = LocalDate.parse("2020-12-15"); 
 
 		//output files
-		String outputDirectory = "RunGTFS2MATSimMiB_policy_21-20";
+		String outputDirectory = "RunGTFS2MATSimMiB_Marz";
 		String networkFile = outputDirectory + "/berlin-v5.5-network.xml.gz";
 		String scheduleFile = outputDirectory + "/berlin-v5.5-transit-schedule.xml.gz";
 		String transitVehiclesFile = outputDirectory + "/berlin-v5.5-transit-vehicles.xml.gz";
@@ -135,7 +135,7 @@ public class RunGTFS2MATSimMiB {
 		TransitSchedulePostProcessTools.copyEarlyDeparturesToFollowingNight(scenario.getTransitSchedule(), 6 * 3600, "copied");
 		
 		//if necessary, parse in an existing network file here:
-		new MatsimNetworkReader(scenario.getNetwork()).readFile("../public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.4-10pct/input/berlin-v5-network.xml.gz");
+		new MatsimNetworkReader(scenario.getNetwork()).readFile("../public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-10pct/input/berlin-v5.5-network.xml.gz");
 		
 		//remove existing pt network (nodes and links)
 		Network networkWoPt = getNetworkWOExistingPtLinksAndNodes(scenario.getNetwork(), "pt_");
@@ -155,6 +155,7 @@ public class RunGTFS2MATSimMiB {
 		}
 		
 		checkSpeedRoutes(scenario.getTransitSchedule(), outputDirectory + "/checkreport.txt", outputDirectory + "/reports.txt");
+		printScheduleTidy(scenario.getTransitSchedule(), outputDirectory + "/Schedule.csv");
 		
 		//Write out network, vehicles and schedule
 		new NetworkWriter(networkWoPt).write(networkFile);
@@ -499,5 +500,75 @@ public class RunGTFS2MATSimMiB {
  	    }
  	   return mindDistance;
 	}
+	
+	public static void printScheduleTidy (TransitSchedule schedule, String file)
+	{
+		log.info("Printing transitschedule Data");
+		BufferedWriter bw = IOUtils.getBufferedWriter(file);
+		try {
+		bw.write("Line" + ";");
+		bw.write("Route" + ";");
+		bw.write("Route_ID" + ";");
+		bw.write("Stop_Number" + ";");	
+		bw.write("Stop_Name" + ";");
+		bw.write("Arrival" + ";");
+		bw.write("Departure" + ";");
+		bw.write("Arrival(HH:MM:SS)" + ";");
+		bw.write("Departure(HH:MM:SS)" + ";");
+		bw.write("X" + ";");
+		bw.write("Y");
+        bw.newLine();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		for (Id<TransitLine> id: schedule.getTransitLines().keySet() )
+				for (Id<TransitRoute> routeid: schedule.getTransitLines().get(id).getRoutes().keySet() ) {
+					for(Id<Departure> depid: schedule.getTransitLines().get(id).getRoutes().get(routeid).getDepartures().keySet()) {
+						 double dep = schedule.getTransitLines().get(id).getRoutes().get(routeid).getDepartures().get(depid).getDepartureTime();
+					for (int i = 0; i < schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().size(); i++) {
+						try {
+						bw.write(id.toString() + ";");
+						bw.write(routeid.toString() + ";");
+						bw.write(schedule.getTransitLines().get(id).getRoutes().get(routeid).getDepartures().get(depid).getId()+ ";");
+						bw.write(i + ";");	
+						bw.write(schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getName() + ";");
+						bw.write((dep + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getArrivalOffset().seconds()) + ";");
+						bw.write((dep + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getDepartureOffset().seconds()) + ";");
+						bw.write(secondstoFormat(dep + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getArrivalOffset().seconds()) + ";");
+						bw.write(secondstoFormat(dep + schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getDepartureOffset().seconds()) + ";");
+						bw.write(schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getCoord().getX() + ";");
+						bw.write(schedule.getTransitLines().get(id).getRoutes().get(routeid).getStops().get(i).getStopFacility().getCoord().getY() + ";");
+				        bw.newLine();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+					}
+				}
+			}
+	
+	public static String secondstoFormat (double seconds) {
+		String format = null;
+		int time = (int)seconds;
+	    if (time >= 0) {
+	        int hour = time / 3600;
+	        time %= 3600;
+	        int min = time / 60;
+	        int sec = time % 60;
+	        format = pad(hour) +":" + pad(min) + ":" + pad(sec) ;
+	      }
+		return(format); 
+	}
+	
+	  public static String pad(int num) {
+		    String res = null;
+		    if(num < 10)
+		      res = "0" + num;
+		    else
+		      res =  "" + num;
+		    return res;
+		  }
  	    
 }
