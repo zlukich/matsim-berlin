@@ -182,7 +182,6 @@
         </dependency>
 
 		<dependency>
-
 			<groupId>com.github.matsim-vsp</groupId>
 			<artifactId>pt-extensions</artifactId>
 			<version>67dec05d3b</version>
@@ -193,13 +192,7 @@
 			<groupId>org.matsim.contrib</groupId>
 			<artifactId>freight</artifactId>
 			<version>${matsim.version}</version>
-	    </dependency>
-			
-	   <dependency>
-            <groupId>com.beust</groupId>
-            <artifactId>jcommander</artifactId>
-            <version>1.71</version>
-        
+
 		<exclusions>
 		<exclusion>
 			<groupId>org.slf4j</groupId>
@@ -278,7 +271,6 @@
 			<plugin>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<!--Presumably, you can run this by mvn assembly:assembly (?)-->
-
 				<configuration>
 					<descriptorRefs>
 						<descriptorRef>jar-with-dependencies</descriptorRef>
@@ -298,6 +290,20 @@
 						<!--latter may run additional stuff or not.-->
 						<goals>
 							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+							
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.2.2</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
 						</goals>
 						<configuration>
 							<outputFile>${project.basedir}/${project.build.finalName}.jar</outputFile>

@@ -103,7 +103,6 @@ public final class RunBerlinScenarioMIB {
 		}
 		
 		var arguments = new InputArgs();
-		JCommander.newBuilder().addObject(arguments).build().parse(args);
 
 		Config config = prepareConfig( new String[] {"https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-1pct/input/berlin-v5.5-1pct.config.xml"} ) ;
 		
