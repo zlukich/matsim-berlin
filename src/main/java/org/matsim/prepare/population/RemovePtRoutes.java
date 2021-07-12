@@ -57,7 +57,7 @@ public class RemovePtRoutes {
 		Config config = ConfigUtils.createConfig();
 		config.global().setCoordinateSystem("EPSG:31468");
 		config.network().setInputFile("D:/GIT/MATSim/matsim-berlin/RunGTFS2MATSimMiB_base_var2/berlin-v5.5-network.xml.gz");
-		config.plans().setInputFile("https://svn.vsp.tu-berlin.de/repos/public-svn/matsim/scenarios/countries/de/berlin/berlin-v5.5-1pct/input/berlin-v5.5-1pct.plans.xml.gz");
+		config.plans().setInputFile("D:\\GIT\\MATSim\\matsim-berlin\\test\\input\\PopulationforMiBTest.xml");
 		Scenario scenario = ScenarioUtils.loadScenario(config);
 		
 		for (Person person: scenario.getPopulation().getPersons().values()) {
@@ -102,7 +102,7 @@ public class RemovePtRoutes {
 		}
 		
 		PopulationWriter popWriter = new PopulationWriter(scenario.getPopulation());
-		popWriter.write("berlin-v5.5-10pct.plans_wo_PtRoutes.xml.gz");
+		popWriter.write("test.plans_wo_PtRoutes.xml.gz");
 	}
 
 	private static void run(final Plan plan) {
