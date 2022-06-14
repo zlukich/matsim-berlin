@@ -41,6 +41,7 @@ import org.matsim.core.config.groups.QSimConfigGroup.TrafficDynamics;
 import org.matsim.core.config.groups.VspExperimentalConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
+import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.controler.OutputDirectoryLogging;
 import org.matsim.core.gbl.Gbl;
 import org.matsim.core.gbl.MatsimRandom;
@@ -48,9 +49,12 @@ import org.matsim.core.network.NetworkChangeEvent;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.routes.RouteFactories;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
+import org.matsim.core.router.TripStructureUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.scoring.functions.ScoringParametersForPerson;
+import org.matsim.core.utils.collections.CollectionUtils;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.core.utils.io.IOUtils;
 import org.matsim.prepare.population.AssignIncome;
 import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
@@ -80,27 +84,41 @@ public final class RunBerlinScenario {
 		}
 
 		Config config = prepareConfig( args );
-
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
 		Scenario scenario = prepareScenario( config ) ;
 		Network network =  scenario.getNetwork();
 		//network.getLinks(id =>{id == 123});
 		var links = network.getLinks().values();
 		Integer ids_of_links_to_be_changed[] = {122077,
 				32393,
-				152714};
-		Set<String> change_modes = new HashSet<String>();
-		change_modes.add("freight");
-		change_modes.add("ride");
+				152714,46981,122763,128554,10911,85556,123234,150027,68877,68882,68875,128376,104400,92405,61167,68028,
+				63665,
+				15713,
+				76115,
+				122445,
+				27939,
+				153398,
 
-		for(Link link:links) {
+				154994,
+				5670,
+				82261,
+
+				63748,
+				104386,
+				69152,
+				};
+		Set<String> change_mode = CollectionUtils.stringArrayToSet(new String[]{ "pt","freight"});
+
+		for(Link link:network.getLinks().values()) {
 			var id_of_link = link.getId();
 			if (Arrays.asList(ids_of_links_to_be_changed).contains(id_of_link.index())) {
 
-				network.removeLink(id_of_link);
-				link.setAllowedModes(change_modes);
-				network.addLink(link);
+				//network.removeLink(id_of_link);
+				link.setCapacity(0.0001);
+				//network.addLink(link);
 			}
 		}
+
 		var tests = network.getLinks().values();
 		for(Link link:tests){
 			var id_test = link.getId();
@@ -108,8 +126,9 @@ public final class RunBerlinScenario {
 				System.out.println(link.getAllowedModes());
 			}
 		}
-		//Controler controler = prepareControler( scenario ) ;
-		//controler.run();
+
+		Controler controler = prepareControler( scenario ) ;
+		controler.run();
 	}
 
 	public static Controler prepareControler( Scenario scenario ) {
