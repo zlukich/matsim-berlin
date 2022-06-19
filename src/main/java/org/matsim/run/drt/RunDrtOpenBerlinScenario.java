@@ -82,7 +82,7 @@ public final class RunDrtOpenBerlinScenario {
 		Config config = prepareConfig( args ) ;
 		Scenario scenario = prepareScenario( config ) ;
 		Controler controler = prepareControler( scenario ) ;
-		controler.run() ;
+		//controler.run() ;
 	}
 	
 	public static Controler prepareControler( Scenario scenario ) {
