@@ -47,6 +47,7 @@ import org.matsim.core.gbl.Gbl;
 import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.network.NetworkChangeEvent;
 import org.matsim.core.network.NetworkUtils;
+import org.matsim.core.population.PopulationUtils;
 import org.matsim.core.population.routes.RouteFactories;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
@@ -84,11 +85,11 @@ public final class RunBerlinScenario {
 		}
 
 		Config config = prepareConfig( args );
-		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 		Scenario scenario = prepareScenario( config ) ;
 		Network network =  scenario.getNetwork();
-		//network.getLinks(id =>{id == 123});
-		var links = network.getLinks().values();
+
+		var links = network.getLinks();
 		Integer ids_of_links_to_be_changed[] = {122077,
 				32393,
 				152714,46981,122763,128554,10911,85556,123234,150027,68877,68882,68875,128376,104400,92405,61167,68028,
@@ -107,25 +108,12 @@ public final class RunBerlinScenario {
 				104386,
 				69152,
 				};
-		Set<String> change_mode = CollectionUtils.stringArrayToSet(new String[]{ "pt","freight"});
-
-		for(Link link:network.getLinks().values()) {
-			var id_of_link = link.getId();
-			if (Arrays.asList(ids_of_links_to_be_changed).contains(id_of_link.index())) {
-
-				//network.removeLink(id_of_link);
-				link.setCapacity(0.0001);
-				//network.addLink(link);
-			}
+		for(int i: ids_of_links_to_be_changed){
+			Link l = network.getLinks().get(Id.createLinkId(i));
+			l.setCapacity(0.0000001);
 		}
 
-		var tests = network.getLinks().values();
-		for(Link link:tests){
-			var id_test = link.getId();
-			if(id_test.index() == 122077){
-				System.out.println(link.getAllowedModes());
-			}
-		}
+		
 
 		Controler controler = prepareControler( scenario ) ;
 		controler.run();
