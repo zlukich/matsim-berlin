@@ -9,18 +9,25 @@ import org.matsim.api.core.v01.events.handler.LinkEnterEventHandler;
 import org.matsim.api.core.v01.events.handler.PersonEntersVehicleEventHandler;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.population.Person;
+import org.matsim.vehicles.Vehicle;
+import scala.Int;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LinkEventHandler implements LinkEnterEventHandler, PersonEntersVehicleEventHandler, ActivityStartEventHandler {
 
     private int counter = 0;
     private static final Id<Link> linkOfInterest = Id.createLinkId("32393");
-    private Id<Person> personId;
+    private final Map<Id<Vehicle>,Id<Person>> personsEnteringVehicle = new HashMap<>();
+    private final Map<Id<Person>, Integer> personsEnteringLink = new HashMap<>();
+    private final Map<Id<Vehicle>, Integer> vehicleEnteringLink = new HashMap<>();
+
     public int GetCounter(){
         return counter;
     }
-
+    public void ResetCounter(){counter = 0;}
 
 
     public int ids_of_links_to_be_changed[] = {122077,
@@ -42,29 +49,39 @@ public class LinkEventHandler implements LinkEnterEventHandler, PersonEntersVehi
             69152,
     };
 
+    public Map<Id<Person>,Integer> getPersons(){
+        return personsEnteringLink;
+    }
+    public Map<Id<Vehicle>,Integer> getVehicles(){
+        return vehicleEnteringLink;
+    }
+
     @Override
     public void handleEvent(PersonEntersVehicleEvent personEntersVehicleEvent) {
 
         var personId = personEntersVehicleEvent.getPersonId();
+        personsEnteringVehicle.put(personEntersVehicleEvent.getVehicleId(),personId);
     }
 
     @Override
     public void handleEvent(LinkEnterEvent linkEnterEvent) {
         //System.out.println(linkEnterEvent.getLinkId());
         int link_id = linkEnterEvent.getLinkId().index();
-        
-        //linkEnterEvent.
-//        for(int i: ids_of_links_to_be_changed){
-//            if(linkEnterEvent.getLinkId().equals(Id.createLinkId(i))){
-//
-//            }
-//
-//        }
-        if(linkEnterEvent.getLinkId().equals(linkOfInterest)){
-            linkEnterEvent.getVehicleId();
-            System.out.println(linkEnterEvent.getLinkId());
-            counter++;
+
+        for(int i: ids_of_links_to_be_changed){
+            if(linkEnterEvent.getLinkId().equals(Id.createLinkId(i))){
+                var personId = personsEnteringVehicle.get(linkEnterEvent.getVehicleId());
+                personsEnteringLink.put(personId,personId.index());
+                vehicleEnteringLink.put(linkEnterEvent.getVehicleId(),linkEnterEvent.getVehicleId().index());
+                counter++;
+            }
+
         }
+//        if(linkEnterEvent.getLinkId().equals(linkOfInterest)){
+//            linkEnterEvent.getVehicleId();
+//            //System.out.println(linkEnterEvent.getLinkId());
+//            counter++;
+//        }
     }
 
     @Override

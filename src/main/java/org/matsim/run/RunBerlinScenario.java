@@ -99,16 +99,15 @@ public final class RunBerlinScenario {
 				122445,
 				27939,
 				153398,
-
 				154994,
 				5670,
 				82261,
-
 				63748,
 				104386,
 				69152,
 				};
-		for(int i: ids_of_links_to_be_changed){
+		for(int i: ids_of_links_to_be_changed)
+		{
 			Link l = network.getLinks().get(Id.createLinkId(i));
 			l.setCapacity(0.0000001);
 		}
@@ -118,6 +117,13 @@ public final class RunBerlinScenario {
 		Controler controler = prepareControler( scenario ) ;
 		controler.run();
 	}
+
+
+
+
+
+
+
 
 	public static Controler prepareControler( Scenario scenario ) {
 		// note that for something like signals, and presumably drt, one needs the controler object
