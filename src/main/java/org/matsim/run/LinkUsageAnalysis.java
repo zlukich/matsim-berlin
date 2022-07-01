@@ -25,7 +25,7 @@ import java.util.Map;
 
 public class LinkUsageAnalysis {
     private static final String baseFile = "C:\\Users\\zlukich\\Desktop\\base.xml.gz";
-    private static final String policyFile = "C:\\Users\\zlukich\\Desktop\\base.xml.gz";
+    private static final String policyFile = "C:\\Users\\zlukich\\Desktop\\policy_500.xml.gz";
     private static final String outFile = "C:\\Users\\zlukich\\Desktop\\smth.csv";
 
     public static void main(String[] args) {

@@ -22,7 +22,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 public class WriterEventHandler implements LinkEnterEventHandler, ActivityStartEventHandler, ActivityEndEventHandler, PersonEntersVehicleEventHandler {
-    public String output_file = "smth.xml";
+    public String output_file = "filtered_output_events.xml";
     public String result_to_file = "";
     public java.io.FileWriter fw;
     public Map<Id<Person>,Integer> Map;
