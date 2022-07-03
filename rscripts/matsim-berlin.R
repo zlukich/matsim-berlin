@@ -1,7 +1,13 @@
+library("matsim")
+library("sf")
+library("tidyverse")
+library("ggalluvial")
 base_output = readTripsTable("base_output_trips.csv.gz")
 policy_output = readTripsTable("policy_output_trips.csv.gz")
 affected_agents = read.csv2("smth.csv")
-
+in_berlin_base = filterByRegion(base_output,st_read("bezirke"),31468)
+anzahl_in_berlin = nrow(distinct(in_berlin_base %>% select(person))) # Anzahl personen, die in Berlin fahren
+print(anzahl_in_berlin)
 filtered_base_output = base_output %>% filter(person %in% affected_agents$AgentId)
 filtered_policy_output = policy_output %>% filter(person %in% affected_agents$AgentId)
 
