@@ -19,6 +19,7 @@
 
 package org.matsim.run;
 
+import ch.sbb.matsim.config.SwissRailRaptorConfigGroup;
 import ch.sbb.matsim.routing.pt.raptor.RaptorIntermodalAccessEgress;
 import ch.sbb.matsim.routing.pt.raptor.SwissRailRaptorModule;
 import com.google.inject.Singleton;
@@ -48,6 +49,7 @@ import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.core.network.NetworkChangeEvent;
 import org.matsim.core.network.NetworkUtils;
 import org.matsim.core.population.PopulationUtils;
+import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.population.routes.RouteFactories;
 import org.matsim.core.router.AnalysisMainModeIdentifier;
 import org.matsim.core.router.TripStructureUtils;
@@ -59,9 +61,19 @@ import org.matsim.core.utils.io.IOUtils;
 import org.matsim.prepare.population.AssignIncome;
 import org.matsim.run.drt.OpenBerlinIntermodalPtDrtRouterModeIdentifier;
 import org.matsim.run.drt.RunDrtOpenBerlinScenario;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
-import java.io.IOException;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.*;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.*;
 import java.util.*;
 
 import static org.matsim.core.config.groups.ControlerConfigGroup.RoutingAlgorithmType.FastAStarLandmarks;
@@ -74,7 +86,7 @@ public final class RunBerlinScenario {
 
 	private static final Logger log = Logger.getLogger(RunBerlinScenario.class );
 
-	public static void main(String[] args) {
+	public static void main(String[] args)throws Exception {
 		
 		for (String arg : args) {
 			log.info( arg );
@@ -90,9 +102,25 @@ public final class RunBerlinScenario {
 		Network network =  scenario.getNetwork();
 
 		var links = network.getLinks();
-		Integer ids_of_links_to_be_changed[] = {122077,
+		Integer ids_of_links_to_be_changed[] = {
+				122077,
 				32393,
-				152714,46981,122763,128554,10911,85556,123234,150027,68877,68882,68875,128376,104400,92405,61167,68028,
+				152714,
+				46981,
+				122763,
+				128554,
+				10911,
+				//85556,
+				123234,
+				150027,
+				68877,
+				68882,
+				68875,
+				128376,
+				//104400,
+				92405,
+				61167,
+				//68028,
 				63665,
 				15713,
 				76115,
@@ -100,26 +128,33 @@ public final class RunBerlinScenario {
 				27939,
 				153398,
 				154994,
-				5670,
+				//5670,
 				82261,
-				63748,
+				//63748,
 				104386,
 				69152,
 				};
-		for(int i: ids_of_links_to_be_changed)
-		{
-			Link l = network.getLinks().get(Id.createLinkId(i));
-			l.setCapacity(0.0000001);
-		}
 
-		
+
+
+
+
 
 		Controler controler = prepareControler( scenario ) ;
 		controler.run();
 	}
 
 
-
+	public static void removeAll(Node node, short nodeType, String name) {
+		if (node.getNodeType() == nodeType && (name == null || node.getNodeName().equals(name))) {
+			node.getParentNode().removeChild(node);
+		} else {
+			NodeList list = node.getChildNodes();
+			for (int i = 0; i < list.getLength(); i++) {
+				removeAll(list.item(i), nodeType, name);
+			}
+		}
+	}
 
 
 
@@ -131,20 +166,16 @@ public final class RunBerlinScenario {
 		Gbl.assertNotNull(scenario);
 		
 		final Controler controler = new Controler( scenario );
-		
-		if (controler.getConfig().transit().isUseTransit()) {
+
 			// use the sbb pt raptor router
-			controler.addOverridingModule( new AbstractModule() {
-				@Override
-				public void install() {
-					install( new SwissRailRaptorModule() );
-				}
-			} );
-		} else {
-			log.warn("Public transit will be teleported and not simulated in the mobsim! "
-					+ "This will have a significant effect on pt-related parameters (travel times, modal split, and so on). "
-					+ "Should only be used for testing or car-focused studies with a fixed modal split.  ");
-		}
+		controler.addOverridingModule( new AbstractModule() {
+			@Override
+			public void install() {
+				install( new SwissRailRaptorModule() );
+			}
+		} );
+
+
 		
 		
 		
@@ -155,7 +186,7 @@ public final class RunBerlinScenario {
 				addTravelTimeBinding( TransportMode.ride ).to( networkTravelTime() );
 				addTravelDisutilityFactoryBinding( TransportMode.ride ).to( carTravelDisutilityFactoryKey() );
 				bind(AnalysisMainModeIdentifier.class).to(OpenBerlinIntermodalPtDrtRouterModeIdentifier.class);
-				
+				bind(MultimodalLinkChooser.class).to(NetworkFixMultimodalLinkChooser.class);
 				//use income-dependent marginal utility of money for scoring
 				bind(ScoringParametersForPerson.class).to(IncomeDependentUtilityOfMoneyPersonScoringParameters.class).in(Singleton.class);
 			}
@@ -193,6 +224,7 @@ public final class RunBerlinScenario {
 	}
 
 	public static Config prepareConfig( String [] args, ConfigGroup... customModules ){
+
 		return prepareConfig( RunDrtOpenBerlinScenario.AdditionalInformation.none, args, customModules ) ;
 	}
 	public static Config prepareConfig( RunDrtOpenBerlinScenario.AdditionalInformation additionalInformation, String [] args,
@@ -231,7 +263,37 @@ public final class RunBerlinScenario {
 		config.plansCalcRoute().removeModeRoutingParams(TransportMode.pt);
 		config.plansCalcRoute().removeModeRoutingParams(TransportMode.bike);
 		config.plansCalcRoute().removeModeRoutingParams("undefined");
-		
+
+		//Intermodal example
+		config.plansCalcRoute().setAccessEgressType(PlansCalcRouteConfigGroup.AccessEgressType.accessEgressModeToLink);
+
+		SwissRailRaptorConfigGroup srrConfig = new SwissRailRaptorConfigGroup();
+		srrConfig.setUseIntermodalAccessEgress(true);
+		srrConfig.setIntermodalAccessEgressModeSelection(SwissRailRaptorConfigGroup.IntermodalAccessEgressModeSelection.RandomSelectOneModePerRoutingRequestAndDirection);
+
+		SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet paramSetCar = new SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet();
+		paramSetCar.setMode(TransportMode.car);
+		paramSetCar.setInitialSearchRadius(1000);
+		paramSetCar.setMaxRadius(6000);
+		paramSetCar.setSearchExtensionRadius(0.1);
+		srrConfig.addIntermodalAccessEgress(paramSetCar);
+
+		SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet paramSetBike = new SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet();
+		paramSetBike.setMode("bicycle");
+		paramSetBike.setInitialSearchRadius(1000);
+		paramSetBike.setMaxRadius(3000);
+		paramSetBike.setSearchExtensionRadius(0.1);
+		srrConfig.addIntermodalAccessEgress(paramSetBike);
+
+		SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet paramSetWalk = new SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet();
+		paramSetWalk.setMode(TransportMode.walk);
+		paramSetWalk.setInitialSearchRadius(1000);
+		paramSetWalk.setMaxRadius(1000);
+		paramSetWalk.setSearchExtensionRadius(0.1);
+		srrConfig.addIntermodalAccessEgress(paramSetWalk);
+
+		config.addModule(srrConfig);
+
 		config.qsim().setInsertingWaitingVehiclesBeforeDrivingVehicles( true );
 				
 		// vsp defaults

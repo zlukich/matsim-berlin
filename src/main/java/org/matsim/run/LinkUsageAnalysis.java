@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LinkUsageAnalysis {
-    private static final String baseFile = "C:\\Users\\zlukich\\Desktop\\base.xml.gz";
-    private static final String policyFile = "C:\\Users\\zlukich\\Desktop\\policy_500.xml.gz";
+    private static final String baseFile = "scenarios/berlin-v5.5-1pct/opened/matsim-berlin-hw2.output_events.xml.gz";
+    private static final String policyFile = "scenarios/berlin-v5.5-1pct/closed/matsim-berlin-hw2.output_events.xml.gz";
     private static final String outFile = "C:\\Users\\zlukich\\Desktop\\smth.csv";
 
     public static void main(String[] args) {
@@ -41,7 +41,7 @@ public class LinkUsageAnalysis {
 
         linkHandler.ResetCounter();
 
-        EventsUtils.readEvents(manager,policyFile);
+        EventsUtils.readEvents(manager,baseFile);
 
 
         var policy_counter = linkHandler.GetCounter();
@@ -72,7 +72,7 @@ public class LinkUsageAnalysis {
         var writerManager = EventsUtils.createEventsManager();
         var writerHandler = new WriterEventHandler(linkHandler.getPersons());
         writerManager.addHandler(writerHandler);
-        EventsUtils.readEvents(writerManager,policyFile);
+        EventsUtils.readEvents(writerManager,baseFile);
         writerHandler.saveToFile();
 
 

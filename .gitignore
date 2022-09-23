@@ -14,10 +14,12 @@ hs_err_pid*
 /.project
 /.classpath
 /target/
-output*
+scenarios/berlin-v5.5-1pct/input/output.xml
+scenarios/
 /output/
 /test/output/
 /bin/
+temp.xml
 
 /.idea/
 *.iml
