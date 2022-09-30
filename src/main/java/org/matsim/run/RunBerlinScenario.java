@@ -276,6 +276,7 @@ public final class RunBerlinScenario {
 		paramSetCar.setInitialSearchRadius(1000);
 		paramSetCar.setMaxRadius(6000);
 		paramSetCar.setSearchExtensionRadius(0.1);
+
 		srrConfig.addIntermodalAccessEgress(paramSetCar);
 
 		SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet paramSetBike = new SwissRailRaptorConfigGroup.IntermodalAccessEgressParameterSet();

@@ -43,7 +43,7 @@ public class LinkEventHandler  implements LinkEnterEventHandler, PersonEntersVeh
             128554,
             10911,
             //85556,
-            //123234,
+            //123234,s
             150027,
             68877,
             68882,
@@ -98,11 +98,6 @@ public class LinkEventHandler  implements LinkEnterEventHandler, PersonEntersVeh
             }
 
         }
-//        if(linkEnterEvent.getLinkId().equals(linkOfInterest)){
-//            linkEnterEvent.getVehicleId();
-//            //System.out.println(linkEnterEvent.getLinkId());
-//            counter++;
-//        }
     }
 
     @Override

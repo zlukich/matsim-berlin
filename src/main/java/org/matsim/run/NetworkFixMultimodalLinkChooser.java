@@ -25,7 +25,6 @@ public class NetworkFixMultimodalLinkChooser implements MultimodalLinkChooser{
         //This basically is the only difference to MultiModalLinkChooserDefaultImpl as here we are saying that we do not care about the originally
         //assigned link, we just assign it again. For most scenarios with filtered networks car = ride = bike e.g. it should always be originalLinkId = modefilteredLink.getId() -sm0622
         Link modeFilteredLink = NetworkUtils.getNearestLink(network, facility.getCoord());
-
         return modeFilteredLink;
     }
 }

@@ -32,22 +32,10 @@ public class LinkUsageAnalysis {
 
         var manager = EventsUtils.createEventsManager();
         var linkHandler = new LinkEventHandler();
-
         manager.addHandler(linkHandler);
-
-//        EventsUtils.readEvents(manager, baseFile);
-//        var base_counter = linkHandler.GetCounter();
-//        System.out.println(base_counter);
-
         linkHandler.ResetCounter();
-
         EventsUtils.readEvents(manager,baseFile);
-
-
         var policy_counter = linkHandler.GetCounter();
-//
-
-//        System.out.println(linkHandler.GetCounter());
         var personIds = linkHandler.getPersons().keySet();
         try (var writer = Files.newBufferedWriter(Paths.get(outFile)); var printer = CSVFormat.DEFAULT.withDelimiter(';').withHeader("AgentId").print(writer)) {
 
@@ -74,10 +62,6 @@ public class LinkUsageAnalysis {
         writerManager.addHandler(writerHandler);
         EventsUtils.readEvents(writerManager,baseFile);
         writerHandler.saveToFile();
-
-
-
-
 
     }
 }
